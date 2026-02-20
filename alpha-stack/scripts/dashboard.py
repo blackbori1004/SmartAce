@@ -2,9 +2,11 @@
 import json
 import os
 import secrets
+import shutil
 import socket
 import threading
 import time
+from pathlib import Path
 from typing import Any, Dict
 
 import requests
@@ -26,6 +28,7 @@ PAPER_NOTIONAL_USD = float(os.getenv("PAPER_NOTIONAL_USD", "100"))
 PAPER_MIN_SPREAD_PCT = float(os.getenv("PAPER_MIN_SPREAD_PCT", "0.35"))
 PAPER_CAPTURE_RATIO = float(os.getenv("PAPER_CAPTURE_RATIO", "0.30"))
 PAPER_COST_BPS = float(os.getenv("PAPER_COST_BPS", "10"))
+HIST_PATH = Path(__file__).resolve().parents[1] / "state" / "fills.jsonl"
 
 state: Dict[str, Any] = {
     "ws_connected": False,
@@ -179,6 +182,46 @@ def dex_spread(pair: str = DEX_PAIR) -> Dict[str, Any]:
         return {"ok": False, "error": str(e)}
 
 
+def hyperliquid_state() -> Dict[str, Any]:
+    addr = os.getenv("HL_ACCOUNT_ADDRESS", "").strip()
+    if not addr:
+        return {"ok": False, "error": "HL_ACCOUNT_ADDRESS 미설정"}
+    try:
+        perp = requests.post(
+            "https://api.hyperliquid.xyz/info",
+            json={"type": "clearinghouseState", "user": addr},
+            timeout=8,
+        ).json()
+        spot = requests.post(
+            "https://api.hyperliquid.xyz/info",
+            json={"type": "spotClearinghouseState", "user": addr},
+            timeout=8,
+        ).json()
+        return {
+            "ok": True,
+            "address": addr,
+            "perpValue": float(perp.get("marginSummary", {}).get("accountValue", 0) or 0),
+            "withdrawable": float(perp.get("withdrawable", 0) or 0),
+            "openPositions": len(perp.get("assetPositions", [])),
+            "spotBalances": spot.get("balances", []),
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+def load_history(limit: int = 15) -> list:
+    if not HIST_PATH.exists():
+        return []
+    lines = HIST_PATH.read_text().strip().splitlines()
+    out = []
+    for ln in lines[-limit:][::-1]:
+        try:
+            out.append(json.loads(ln))
+        except Exception:
+            pass
+    return out
+
+
 def paper_worker():
     while True:
         snap = dex_spread()
@@ -233,19 +276,21 @@ def index():
   </style>
 </head>
 <body>
-  <h2>Alpha Stack Dashboard</h2>
-  <div class='muted'>Auto-refresh every 5s</div>
+  <h2>에이스 트레이딩 대시보드</h2>
+  <div class='muted'>5초마다 자동 새로고침</div>
   <div class='grid'>
     <div class='card'><h3>ETH RPC</h3><div id='rpc'></div></div>
-    <div class='card'><h3>DEX Spread (<span id='pair'>-</span>)</h3><div id='dex'></div></div>
-    <div class='card'><h3>Polymarket WS</h3><div id='ws'></div></div>
-    <div class='card'><h3>Paper Trading (Sim)</h3><div id='paper'></div></div>
+    <div class='card'><h3>DEX 스프레드 (<span id='pair'>-</span>)</h3><div id='dex'></div></div>
+    <div class='card'><h3>Polymarket 연결</h3><div id='ws'></div></div>
+    <div class='card'><h3>페이퍼 트레이딩</h3><div id='paper'></div></div>
+    <div class='card'><h3>Hyperliquid 현황</h3><div id='hl'></div></div>
+    <div class='card'><h3>실행 히스토리</h3><div id='hist'></div></div>
   </div>
 <script>
 const token = new URLSearchParams(window.location.search).get('token') || '';
 async function tick(){
   const r=await fetch('/api/status?token=' + encodeURIComponent(token));
-  if(!r.ok){document.body.innerHTML='<h3>Unauthorized</h3><p>Missing/invalid token.</p>';return;}
+  if(!r.ok){document.body.innerHTML='<h3>접근 거부</h3><p>토큰이 없거나 잘못되었습니다.</p>';return;}
   const d=await r.json();
 
   const rpc=d.rpc.ok
@@ -261,21 +306,38 @@ async function tick(){
     : `<div class='bad'>${d.dex.error}</div>`;
   document.getElementById('dex').innerHTML=dex;
 
-  const ws=`<div class='${d.ws.ws_connected ? 'ok':'bad'}'>${d.ws.ws_connected ? 'Connected':'Disconnected'}</div>
-            <div>Messages: ${d.ws.ws_messages}</div>
-            <div>Last type: ${d.ws.ws_last_type || '-'}</div>
-            <div class='muted'>Last ts: ${d.ws.ws_last_ts || '-'}</div>
-            <div class='muted'>Err: ${d.ws.ws_error || '-'}</div>`;
+  const ws=`<div class='${d.ws.ws_connected ? 'ok':'bad'}'>${d.ws.ws_connected ? '연결됨':'끊김'}</div>
+            <div>메시지 수: ${d.ws.ws_messages}</div>
+            <div>마지막 타입: ${d.ws.ws_last_type || '-'}</div>
+            <div class='muted'>마지막 시각: ${d.ws.ws_last_ts || '-'}</div>
+            <div class='muted'>오류: ${d.ws.ws_error || '-'}</div>`;
   document.getElementById('ws').innerHTML=ws;
 
   const p=d.paper;
   const wr = p.trades ? ((p.wins/p.trades)*100).toFixed(1) : '0.0';
-  const paper = `<div>Start: $${p.startUsd.toFixed(2)} | Now: <b>$${p.cashUsd.toFixed(2)}</b></div>
+  const paper = `<div>시작: $${p.startUsd.toFixed(2)} | 현재: <b>$${p.cashUsd.toFixed(2)}</b></div>
     <div>PnL: <span class='${p.pnlUsd>=0?'ok':'bad'}'>$${p.pnlUsd.toFixed(2)}</span></div>
-    <div>Trades: ${p.trades} (Win ${p.wins} / Loss ${p.losses}, WR ${wr}%)</div>
-    <div>Last spread: ${p.lastSpreadPct===null?'-':p.lastSpreadPct.toFixed(3)+'%'}</div>
-    <div class='muted'>Rule: spread ≥ ${p.config.minSpreadPct}% | notional $${p.config.notionalUsd} | capture ${(p.config.captureRatio*100).toFixed(0)}% | cost ${p.config.costBps}bps</div>`;
+    <div>거래수: ${p.trades} (승 ${p.wins} / 패 ${p.losses}, 승률 ${wr}%)</div>
+    <div>최근 스프레드: ${p.lastSpreadPct===null?'-':p.lastSpreadPct.toFixed(3)+'%'}</div>
+    <div class='muted'>규칙: spread ≥ ${p.config.minSpreadPct}% | notional $${p.config.notionalUsd} | capture ${(p.config.captureRatio*100).toFixed(0)}% | cost ${p.config.costBps}bps</div>`;
   document.getElementById('paper').innerHTML=paper;
+
+  const hl = d.hl.ok
+    ? `<div class='mono'>${d.hl.address}</div>
+       <div>Perp 계정가치: <b>$${d.hl.perpValue.toFixed(4)}</b></div>
+       <div>출금가능: $${d.hl.withdrawable.toFixed(4)}</div>
+       <div>오픈 포지션: ${d.hl.openPositions}</div>`
+    : `<div class='bad'>${d.hl.error}</div>`;
+  document.getElementById('hl').innerHTML = hl;
+
+  const hist = (d.history || []).map((x)=>{
+      const o = (x.order_result||{}).response?.data?.statuses?.[0]?.filled;
+      const side = x.plan?.side || '-';
+      const sym = x.plan?.symbol || '-';
+      if(!o) return '';
+      return `<div class='muted'>${new Date((x.ts||0)*1000).toLocaleString()} | ${sym} ${side} ${o.totalSz} @ ${o.avgPx}</div>`;
+    }).join('') || '<div class="muted">히스토리 없음</div>';
+  document.getElementById('hist').innerHTML = hist;
 }
 setInterval(tick,5000); tick();
 </script>
@@ -293,6 +355,8 @@ def api_status():
             "dex": dex_spread(),
             "dexPair": DEX_PAIR,
             "ws": state,
+            "hl": hyperliquid_state(),
+            "history": load_history(),
             "paper": {
                 **paper,
                 "config": {
@@ -314,6 +378,10 @@ if __name__ == "__main__":
     print(f"Dashboard phone : http://{ip}:{DASHBOARD_PORT}/?token={DASHBOARD_TOKEN}")
     print("(same Wi-Fi only. Do NOT port-forward 8788.)")
     print("=" * 72)
+    if shutil.which("cloudflared"):
+        print("원격(다른 Wi-Fi) 접속: cloudflared tunnel --url http://127.0.0.1:8788")
+    else:
+        print("다른 Wi-Fi 원격접속은 cloudflared/ngrok 설치 후 터널 사용 권장")
 
     threading.Thread(target=ws_worker, daemon=True).start()
     threading.Thread(target=paper_worker, daemon=True).start()

@@ -26,6 +26,8 @@ class RiskConfig:
     max_daily_loss_pct: float = float(os.getenv("HL_MAX_DAILY_LOSS_PCT", "3"))
     max_slippage: float = float(os.getenv("HL_MAX_SLIPPAGE", "0.003"))
     max_open_positions: int = int(os.getenv("HL_MAX_OPEN_POSITIONS", "1"))
+    tp_pct: float = float(os.getenv("HL_TP_PCT", "3.0"))
+    sl_pct: float = float(os.getenv("HL_SL_PCT", "2.0"))
 
 
 def _load_key() -> str:
@@ -139,6 +141,33 @@ def _risk_checks(info: Info, address: str, notional: float, cfg: RiskConfig) -> 
     return {"account_value": acct_val, "daily_loss_pct": daily_loss_pct, "open_positions": open_pos}
 
 
+def _attach_tpsl(exch: Exchange, symbol: str, is_buy: bool, sz: float, avg_px: float, cfg: RiskConfig) -> Dict[str, Any]:
+    # Long: TP above, SL below. Short: inverse.
+    tp_px = avg_px * (1 + cfg.tp_pct / 100.0) if is_buy else avg_px * (1 - cfg.tp_pct / 100.0)
+    sl_px = avg_px * (1 - cfg.sl_pct / 100.0) if is_buy else avg_px * (1 + cfg.sl_pct / 100.0)
+
+    # reduce-only opposite side
+    close_is_buy = not is_buy
+
+    tp_res = exch.order(
+        symbol,
+        close_is_buy,
+        sz,
+        tp_px,
+        order_type={"trigger": {"triggerPx": tp_px, "isMarket": True, "tpsl": "tp"}},
+        reduce_only=True,
+    )
+    sl_res = exch.order(
+        symbol,
+        close_is_buy,
+        sz,
+        sl_px,
+        order_type={"trigger": {"triggerPx": sl_px, "isMarket": True, "tpsl": "sl"}},
+        reduce_only=True,
+    )
+    return {"tp_px": tp_px, "sl_px": sl_px, "tp_res": tp_res, "sl_res": sl_res}
+
+
 def place_market(symbol: str, side: str, usd_size: float, leverage: int, execute: bool) -> None:
     side = side.lower().strip()
     if side not in {"buy", "sell"}:
@@ -174,11 +203,22 @@ def place_market(symbol: str, side: str, usd_size: float, leverage: int, execute
     lev_res = exch.update_leverage(leverage, symbol, is_cross=True)
     ord_res = exch.market_open(symbol, is_buy=is_buy, sz=sz, slippage=cfg.max_slippage)
 
+    tpsl = None
+    try:
+        filled = ord_res.get("response", {}).get("data", {}).get("statuses", [{}])[0].get("filled")
+        if filled:
+            avg_px = float(filled["avgPx"])
+            filled_sz = float(filled["totalSz"])
+            tpsl = _attach_tpsl(exch, symbol, is_buy, filled_sz, avg_px, cfg)
+    except Exception as e:
+        tpsl = {"error": str(e)}
+
     event = {
         "type": "market_open",
         "plan": plan,
         "leverage_result": lev_res,
         "order_result": ord_res,
+        "tpsl": tpsl,
         "ts": int(time.time()),
     }
     _log(event)

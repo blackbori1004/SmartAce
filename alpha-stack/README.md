@@ -60,12 +60,21 @@ python scripts/dashboard.py
 - Mac: `http://127.0.0.1:8788/?token=your-strong-token`
 - Phone(같은 Wi-Fi): `http://<맥의로컬IP>:8788/?token=your-strong-token`
 
+다른 Wi-Fi에서도 보려면(선택):
+
+```bash
+# cloudflared 설치 후
+cloudflared tunnel --url http://127.0.0.1:8788
+```
+
 표시 항목:
 
 - ETH RPC 연결/블록 높이
 - DEX 스프레드
 - Polymarket WS 연결 상태/메시지 카운트
 - Paper Trading 시뮬레이션(PnL/승률/거래수)
+- Hyperliquid 현황(계정가치/포지션)
+- 실행 히스토리(최근 체결 기록)
 
 ## 6) Hyperliquid API 실행 엔진 (브라우저 클릭 대체)
 
