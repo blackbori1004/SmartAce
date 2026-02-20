@@ -224,14 +224,48 @@ def load_history(limit: int = 15) -> list:
 
 
 def load_trade_stats(limit: int = 30) -> Dict[str, Any]:
-    if not TRADES_PATH.exists():
-        return {"trades": [], "closed": 0, "wins": 0, "winRate": 0.0, "cumPnl": 0.0}
     rows = []
-    for ln in TRADES_PATH.read_text().strip().splitlines():
-        try:
-            rows.append(json.loads(ln))
-        except Exception:
-            pass
+    if TRADES_PATH.exists():
+        for ln in TRADES_PATH.read_text().strip().splitlines():
+            try:
+                rows.append(json.loads(ln))
+            except Exception:
+                pass
+
+    # fallback: if no normalized trades yet, derive lightweight history from fills logs
+    if not rows and HIST_PATH.exists():
+        for ln in HIST_PATH.read_text().strip().splitlines():
+            try:
+                x = json.loads(ln)
+            except Exception:
+                continue
+            t = x.get("type")
+            if t == "market_open":
+                f = (x.get("order_result") or {}).get("response", {}).get("data", {}).get("statuses", [{}])[0].get("filled")
+                if f:
+                    rows.append({
+                        "kind": "opened",
+                        "symbol": x.get("plan", {}).get("symbol"),
+                        "side": x.get("plan", {}).get("side"),
+                        "entry": float(f.get("avgPx", 0) or 0),
+                        "size": float(f.get("totalSz", 0) or 0),
+                        "ts": x.get("ts"),
+                    })
+            elif t == "market_close":
+                f = (x.get("result") or {}).get("response", {}).get("data", {}).get("statuses", [{}])[0].get("filled")
+                if f:
+                    rows.append({
+                        "kind": "closed",
+                        "symbol": x.get("symbol"),
+                        "side": "-",
+                        "entry": None,
+                        "exit": float(f.get("avgPx", 0) or 0),
+                        "size": float(f.get("totalSz", 0) or 0),
+                        "reason": "manual/market_close",
+                        "pnl_usd": 0.0,
+                        "ts": x.get("ts"),
+                    })
+
     closed = [x for x in rows if x.get("kind") == "closed"]
     wins = [x for x in closed if float(x.get("pnl_usd", 0)) > 0]
     cum = sum(float(x.get("pnl_usd", 0)) for x in closed)
