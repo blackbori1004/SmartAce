@@ -373,6 +373,7 @@ def load_polymarket_copy_stats(limit: int = 20) -> Dict[str, Any]:
     wr = (wins / len(closed) * 100.0) if closed else 0.0
 
     positions = []
+    # 1) 우선 state 파일의 실시간 포지션 사용
     if POLY_COPY_STATE_PATH.exists():
         try:
             st = json.loads(POLY_COPY_STATE_PATH.read_text())
@@ -391,13 +392,81 @@ def load_polymarket_copy_stats(limit: int = 20) -> Dict[str, Any]:
         except Exception:
             pass
 
+    # 2) state가 비었으면 로그 기반으로 복원 (이전 버전 호환)
+    if not positions:
+        agg = {}
+        for x in rows:
+            m = x.get("mode")
+            if m == "EXECUTE":
+                res = x.get("result") or {}
+                if str(res.get("status")) != "matched":
+                    continue
+                asset = str(x.get("asset") or "")
+                qty = float(res.get("takingAmount") or 0)
+                cost = float(res.get("makingAmount") or x.get("my_usd") or 0)
+                if not asset or qty <= 0:
+                    continue
+                if asset not in agg:
+                    agg[asset] = {
+                        "asset": asset,
+                        "title": x.get("title") or x.get("slug") or asset[:10],
+                        "qty": 0.0,
+                        "cost": 0.0,
+                    }
+                agg[asset]["qty"] += qty
+                agg[asset]["cost"] += cost
+            elif m == "CLOSE":
+                asset = str(x.get("asset") or "")
+                qty = float(x.get("qty") or 0)
+                if asset in agg:
+                    agg[asset]["qty"] = max(0.0, agg[asset]["qty"] - qty)
+
+        for asset, a in agg.items():
+            if a["qty"] <= 0:
+                continue
+            entry = a["cost"] / a["qty"] if a["qty"] > 0 else 0
+            positions.append(
+                {
+                    "asset": asset,
+                    "title": a["title"],
+                    "side": "LONG",
+                    "qty": a["qty"],
+                    "entry": entry,
+                    "leverage": 1,
+                    "pnl": None,
+                }
+            )
+
     wallet_total = None
     c = _polymarket_client()
     if c is not None:
         try:
             sig_type = int(os.getenv("POLYMARKET_SIGNATURE_TYPE", "2"))
             bal = c.get_balance_allowance(BalanceAllowanceParams(asset_type=AssetType.COLLATERAL, signature_type=sig_type))
-            wallet_total = float(bal.get("balance", 0) or 0) / 1_000_000.0
+            collateral_usdc = float(bal.get("balance", 0) or 0) / 1_000_000.0
+
+            # 포지션 평가금액/미실현 PnL 계산
+            pos_value = 0.0
+            for p in positions:
+                qty = float(p.get("qty", 0) or 0)
+                entry = float(p.get("entry", 0) or 0)
+                if qty <= 0:
+                    continue
+                mark_px = 0.0
+                try:
+                    mark_px = float(c.get_last_trade_price(p["asset"]) or 0)
+                except Exception:
+                    mark_px = 0.0
+
+                if mark_px > 0:
+                    p["pnl"] = (mark_px - entry) * qty
+                    pos_value += mark_px * qty
+                else:
+                    # 시세 조회 실패 시 entry 기준 보수 추정
+                    p["pnl"] = 0.0
+                    pos_value += entry * qty
+
+            wallet_total = collateral_usdc + pos_value
         except Exception:
             wallet_total = None
 
