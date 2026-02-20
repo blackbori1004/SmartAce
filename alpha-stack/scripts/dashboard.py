@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import base64
+import binascii
 import json
 import os
 import secrets
@@ -10,8 +12,15 @@ from pathlib import Path
 from typing import Any, Dict
 
 import requests
+from dotenv import load_dotenv
 from flask import Flask, Response, abort, jsonify, request
 from websocket import WebSocketApp
+
+try:
+    from py_clob_client.client import ClobClient
+    from py_clob_client.clob_types import ApiCreds, BalanceAllowanceParams, AssetType
+except Exception:
+    ClobClient = None
 
 app = Flask(__name__)
 
@@ -31,6 +40,8 @@ PAPER_COST_BPS = float(os.getenv("PAPER_COST_BPS", "10"))
 HIST_PATH = Path(__file__).resolve().parents[1] / "state" / "fills.jsonl"
 TRADES_PATH = Path(__file__).resolve().parents[1] / "state" / "trades.jsonl"
 POLY_COPY_LOG_PATH = Path(__file__).resolve().parents[1] / "state" / "polymarket_copy_log.jsonl"
+POLY_COPY_STATE_PATH = Path(__file__).resolve().parents[1] / "state" / "polymarket_copy_state.json"
+POLY_ENV_PATH = Path(__file__).resolve().parents[1] / ".env.polymarket"
 
 state: Dict[str, Any] = {
     "ws_connected": False,
@@ -199,13 +210,38 @@ def hyperliquid_state() -> Dict[str, Any]:
             json={"type": "spotClearinghouseState", "user": addr},
             timeout=8,
         ).json()
+        spot_bal = spot.get("balances", [])
+        usdc_total = 0.0
+        for b in spot_bal:
+            if b.get("coin") == "USDC":
+                usdc_total = float(b.get("total", 0) or 0)
+
+        pos_rows = []
+        for ap in perp.get("assetPositions", []):
+            p = ap.get("position", {})
+            szi = float(p.get("szi", 0) or 0)
+            pos_rows.append(
+                {
+                    "symbol": p.get("coin"),
+                    "side": "LONG" if szi > 0 else "SHORT",
+                    "size": abs(szi),
+                    "leverage": float((p.get("leverage") or {}).get("value", 0) or 0),
+                    "entryPx": float(p.get("entryPx", 0) or 0),
+                    "positionValue": float(p.get("positionValue", 0) or 0),
+                    "unrealizedPnl": float(p.get("unrealizedPnl", 0) or 0),
+                }
+            )
+
+        perp_value = float(perp.get("marginSummary", {}).get("accountValue", 0) or 0)
         return {
             "ok": True,
             "address": addr,
-            "perpValue": float(perp.get("marginSummary", {}).get("accountValue", 0) or 0),
+            "perpValue": perp_value,
             "withdrawable": float(perp.get("withdrawable", 0) or 0),
             "openPositions": len(perp.get("assetPositions", [])),
-            "spotBalances": spot.get("balances", []),
+            "positions": pos_rows,
+            "spotBalances": spot_bal,
+            "walletTotal": perp_value + usdc_total,
         }
     except Exception as e:
         return {"ok": False, "error": str(e)}
@@ -274,6 +310,40 @@ def load_trade_stats(limit: int = 30) -> Dict[str, Any]:
     return {"trades": rows[-limit:][::-1], "closed": len(closed), "wins": len(wins), "winRate": wr, "cumPnl": cum}
 
 
+def _looks_base64(s: str) -> bool:
+    try:
+        base64.b64decode(s, validate=True)
+        return True
+    except (binascii.Error, ValueError):
+        return False
+
+
+def _polymarket_client():
+    if ClobClient is None or not POLY_ENV_PATH.exists():
+        return None
+    try:
+        load_dotenv(POLY_ENV_PATH, override=False)
+        host = os.getenv("POLYMARKET_HOST", "https://clob.polymarket.com").strip()
+        chain_id = int(os.getenv("POLYMARKET_CHAIN_ID", "137").strip())
+        pk = os.getenv("POLYMARKET_PRIVATE_KEY", "").strip()
+        funder = os.getenv("POLYMARKET_FUNDER", "").strip()
+        sig_type = int(os.getenv("POLYMARKET_SIGNATURE_TYPE", "2").strip())
+        if not pk or not funder:
+            return None
+
+        c = ClobClient(host, key=pk, chain_id=chain_id, signature_type=sig_type, funder=funder)
+        k = os.getenv("POLYMARKET_API_KEY", "").strip()
+        s = os.getenv("POLYMARKET_API_SECRET", "").strip()
+        p = os.getenv("POLYMARKET_API_PASSPHRASE", "").strip()
+        if k and s and p and _looks_base64(s):
+            c.set_api_creds(ApiCreds(api_key=k, api_secret=s, api_passphrase=p))
+        else:
+            c.set_api_creds(c.create_or_derive_api_creds())
+        return c
+    except Exception:
+        return None
+
+
 def load_polymarket_copy_stats(limit: int = 20) -> Dict[str, Any]:
     rows = []
     if POLY_COPY_LOG_PATH.exists():
@@ -286,13 +356,62 @@ def load_polymarket_copy_stats(limit: int = 20) -> Dict[str, Any]:
     recent = rows[-limit:][::-1]
     executed = [x for x in rows if x.get("mode") == "EXECUTE"]
     dry = [x for x in rows if x.get("mode") == "DRY_RUN"]
+    closed = [x for x in rows if x.get("mode") == "CLOSE"]
     total_exec_usd = sum(float(x.get("my_usd", 0) or 0) for x in executed)
+
+    wins = 0
+    cum_pnl_usd = 0.0
+    for c in closed:
+        entry = float(c.get("entry_price", 0) or 0)
+        last = float(c.get("last_price", 0) or 0)
+        qty = float(c.get("qty", 0) or 0)
+        pnl = (last - entry) * qty
+        if pnl > 0:
+            wins += 1
+        cum_pnl_usd += pnl
+
+    wr = (wins / len(closed) * 100.0) if closed else 0.0
+
+    positions = []
+    if POLY_COPY_STATE_PATH.exists():
+        try:
+            st = json.loads(POLY_COPY_STATE_PATH.read_text())
+            for asset, p in (st.get("positions") or {}).items():
+                positions.append(
+                    {
+                        "asset": asset,
+                        "title": p.get("title") or p.get("slug") or asset[:10],
+                        "side": "LONG",
+                        "qty": float(p.get("qty", 0) or 0),
+                        "entry": float(p.get("entry_price", 0) or 0),
+                        "leverage": 1,
+                        "pnl": None,
+                    }
+                )
+        except Exception:
+            pass
+
+    wallet_total = None
+    c = _polymarket_client()
+    if c is not None:
+        try:
+            sig_type = int(os.getenv("POLYMARKET_SIGNATURE_TYPE", "2"))
+            bal = c.get_balance_allowance(BalanceAllowanceParams(asset_type=AssetType.COLLATERAL, signature_type=sig_type))
+            wallet_total = float(bal.get("balance", 0) or 0) / 1_000_000.0
+        except Exception:
+            wallet_total = None
 
     return {
         "total": len(rows),
         "executed": len(executed),
         "dryRuns": len(dry),
+        "closed": len(closed),
+        "wins": wins,
+        "winRate": wr,
+        "cumPnlUsd": cum_pnl_usd,
         "execUsd": total_exec_usd,
+        "walletTotal": wallet_total,
+        "positions": positions,
         "recent": recent,
     }
 
@@ -340,94 +459,83 @@ def index():
 <html>
 <head>
   <meta charset='utf-8'/>
-  <title>Alpha Dashboard</title>
+  <title>Alpha Dashboard Pro</title>
   <style>
-    body{font-family:system-ui;background:#0b1020;color:#e7ebff;padding:24px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
-    .card{background:#141a33;border:1px solid #2a3366;border-radius:12px;padding:16px}
+    body{font-family:Inter,system-ui;background:#0b1020;color:#e7ebff;padding:20px}
+    .top{display:flex;justify-content:space-between;align-items:end;margin-bottom:12px}
+    .muted{color:#95a0d0;font-size:12px}
     .ok{color:#42d392}.bad{color:#ff6b6b}
-    .muted{color:#95a0d0;font-size:13px}
+    .card{background:#141a33;border:1px solid #2a3366;border-radius:12px;padding:14px;margin-bottom:12px}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{border-bottom:1px solid #253060;padding:8px;text-align:left;vertical-align:top}
+    th{color:#b7c2f7;font-weight:600;background:#111831;position:sticky;top:0}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
   </style>
 </head>
 <body>
-  <h2>에이스 트레이딩 대시보드</h2>
-  <div class='muted'>5초마다 자동 새로고침</div>
-  <div class='grid'>
-    <div class='card'><h3>ETH RPC</h3><div id='rpc'></div></div>
-    <div class='card'><h3>DEX 스프레드 (<span id='pair'>-</span>)</h3><div id='dex'></div></div>
-    <div class='card'><h3>Polymarket 연결</h3><div id='ws'></div></div>
-    <div class='card'><h3>페이퍼 트레이딩</h3><div id='paper'></div></div>
-    <div class='card'><h3>Hyperliquid 현황</h3><div id='hl'></div></div>
-    <div class='card'><h3>실행 히스토리</h3><div id='hist'></div></div>
-    <div class='card'><h3>Polymarket 카피트레이딩</h3><div id='pmcopy'></div></div>
+  <div class='top'>
+    <div><h2 style='margin:0'>에이스 트레이딩 대시보드 (Pro)</h2><div class='muted'>거래소 UI 스타일 · 5초 자동갱신</div></div>
+    <div class='muted' id='updatedAt'>-</div>
   </div>
+
+  <div class='card'>
+    <h3>채널별 요약</h3>
+    <table>
+      <thead><tr><th>채널</th><th>거래수 (승/패/승률)</th><th>누적 PnL</th><th>현재 포지션 수</th><th>지갑 총 잔고</th></tr></thead>
+      <tbody id='channelRows'></tbody>
+    </table>
+  </div>
+
+  <div class='card'>
+    <h3>현재 포지션</h3>
+    <table>
+      <thead><tr><th>채널</th><th>포지션명/페어</th><th>롱/숏</th><th>볼륨</th><th>레버리지</th><th>PnL</th></tr></thead>
+      <tbody id='posRows'></tbody>
+    </table>
+  </div>
+
+  <div class='card'>
+    <h3>운영 상태</h3>
+    <div id='ops'></div>
+  </div>
+
 <script>
 const token = new URLSearchParams(window.location.search).get('token') || '';
+const fmtUsd = (n)=> n===null||n===undefined ? '-' : '$'+Number(n).toFixed(2);
+const fmtPct = (n)=> n===null||n===undefined ? '-' : Number(n).toFixed(1)+'%';
+
 async function tick(){
-  const r=await fetch('/api/status?token=' + encodeURIComponent(token));
-  if(!r.ok){document.body.innerHTML='<h3>접근 거부</h3><p>토큰이 없거나 잘못되었습니다.</p>';return;}
+  const r=await fetch('/api/status?token='+encodeURIComponent(token));
+  if(!r.ok){document.body.innerHTML='<h3>접근 거부</h3><p>토큰 확인 필요</p>';return;}
   const d=await r.json();
+  document.getElementById('updatedAt').innerText = new Date((d.ts||0)*1000).toLocaleString();
 
-  const rpc=d.rpc.ok
-    ? `<div class='ok'>Connected</div><div>Block: ${d.rpc.block}</div><div class='muted mono'>${d.rpc.hex}</div>`
-    : `<div class='bad'>${d.rpc.error}</div>`;
-  document.getElementById('rpc').innerHTML=rpc;
+  const hl = d.hl || {};
+  const ts = d.tradeStats || {closed:0,wins:0,winRate:0,cumPnl:0};
+  const pc = d.polymarketCopy || {executed:0,closed:0,wins:0,winRate:0,cumPnlUsd:0,positions:[],walletTotal:null};
 
-  document.getElementById('pair').textContent = d.dexPair;
-  const dex=d.dex.ok
-    ? `<div>Spread: <b>${d.dex.spreadPct.toFixed(3)}%</b></div>
-       <div>Low: ${d.dex.low.price.toFixed(4)} (${d.dex.low.dex}/${d.dex.low.chain})</div>
-       <div>High: ${d.dex.high.price.toFixed(4)} (${d.dex.high.dex}/${d.dex.high.chain})</div>`
-    : `<div class='bad'>${d.dex.error}</div>`;
-  document.getElementById('dex').innerHTML=dex;
+  const ch = [];
+  ch.push(`<tr><td>Hyperliquid</td><td>${ts.closed} (${ts.wins}/${Math.max(0,ts.closed-ts.wins)}/${fmtPct(ts.winRate)})</td><td class='${Number(ts.cumPnl)>=0?'ok':'bad'}'>${fmtUsd(ts.cumPnl)}</td><td>${hl.openPositions ?? '-'}</td><td>${fmtUsd(hl.walletTotal)}</td></tr>`);
+  ch.push(`<tr><td>Polymarket</td><td>${pc.closed||0} (${pc.wins||0}/${Math.max(0,(pc.closed||0)-(pc.wins||0))}/${fmtPct(pc.winRate)})</td><td class='${Number(pc.cumPnlUsd)>=0?'ok':'bad'}'>${fmtUsd(pc.cumPnlUsd)}</td><td>${(pc.positions||[]).length}</td><td>${fmtUsd(pc.walletTotal)}</td></tr>`);
+  document.getElementById('channelRows').innerHTML = ch.join('');
 
-  const ws=`<div class='${d.ws.ws_connected ? 'ok':'bad'}'>${d.ws.ws_connected ? '연결됨':'끊김'}</div>
-            <div>메시지 수: ${d.ws.ws_messages}</div>
-            <div>마지막 타입: ${d.ws.ws_last_type || '-'}</div>
-            <div class='muted'>마지막 시각: ${d.ws.ws_last_ts || '-'}</div>
-            <div class='muted'>오류: ${d.ws.ws_error || '-'}</div>`;
-  document.getElementById('ws').innerHTML=ws;
+  const posRows=[];
+  (hl.positions||[]).forEach(p=>{
+    posRows.push(`<tr><td>Hyperliquid</td><td>${p.symbol||'-'}</td><td>${p.side||'-'}</td><td>${Number(p.size||0).toFixed(6)}</td><td>${p.leverage||'-'}x</td><td class='${Number(p.unrealizedPnl)>=0?'ok':'bad'}'>${fmtUsd(p.unrealizedPnl)}</td></tr>`);
+  });
+  (pc.positions||[]).forEach(p=>{
+    posRows.push(`<tr><td>Polymarket</td><td>${p.title||p.asset||'-'}</td><td>${p.side||'LONG'}</td><td>${Number(p.qty||0).toFixed(4)}</td><td>${p.leverage||1}x</td><td>${p.pnl===null?'-':fmtUsd(p.pnl)}</td></tr>`);
+  });
+  if(!posRows.length) posRows.push('<tr><td colspan="6" class="muted">오픈 포지션 없음</td></tr>');
+  document.getElementById('posRows').innerHTML = posRows.join('');
 
-  const p=d.paper;
-  const wr = p.trades ? ((p.wins/p.trades)*100).toFixed(1) : '0.0';
-  const paper = `<div>시작: $${p.startUsd.toFixed(2)} | 현재: <b>$${p.cashUsd.toFixed(2)}</b></div>
-    <div>PnL: <span class='${p.pnlUsd>=0?'ok':'bad'}'>$${p.pnlUsd.toFixed(2)}</span></div>
-    <div>거래수: ${p.trades} (승 ${p.wins} / 패 ${p.losses}, 승률 ${wr}%)</div>
-    <div>최근 스프레드: ${p.lastSpreadPct===null?'-':p.lastSpreadPct.toFixed(3)+'%'}</div>
-    <div class='muted'>규칙: spread ≥ ${p.config.minSpreadPct}% | notional $${p.config.notionalUsd} | capture ${(p.config.captureRatio*100).toFixed(0)}% | cost ${p.config.costBps}bps</div>`;
-  document.getElementById('paper').innerHTML=paper;
-
-  const hl = d.hl.ok
-    ? `<div class='mono'>${d.hl.address}</div>
-       <div>Perp 계정가치: <b>$${d.hl.perpValue.toFixed(4)}</b></div>
-       <div>출금가능: $${d.hl.withdrawable.toFixed(4)}</div>
-       <div>오픈 포지션: ${d.hl.openPositions}</div>`
-    : `<div class='bad'>${d.hl.error}</div>`;
-  document.getElementById('hl').innerHTML = hl;
-
-  const ts = d.tradeStats || {trades:[],closed:0,wins:0,winRate:0,cumPnl:0};
-  const header = `<div>누적 PnL: <b class='${ts.cumPnl>=0?'ok':'bad'}'>$${Number(ts.cumPnl).toFixed(2)}</b></div>
-    <div>종료 거래: ${ts.closed} | 승률: ${Number(ts.winRate).toFixed(1)}%</div>`;
-  const rows = (ts.trades || []).map((x)=>{
-      if(x.kind==='closed'){
-        return `<div class='muted'>${new Date((x.ts||0)*1000).toLocaleString()} | ${x.symbol} ${x.side} 종료 ${x.reason||'-'} | PnL <span class='${x.pnl_usd>=0?'ok':'bad'}'>$${Number(x.pnl_usd).toFixed(2)}</span></div>`;
-      }
-      if(x.kind==='opened'){
-        return `<div class='muted'>${new Date((x.ts||0)*1000).toLocaleString()} | ${x.symbol} ${x.side} 진입 ${x.size} @ ${x.entry}</div>`;
-      }
-      return '';
-    }).join('') || '<div class="muted">히스토리 없음</div>';
-  document.getElementById('hist').innerHTML = header + rows;
-
-  const pc = d.polymarketCopy || {total:0,executed:0,dryRuns:0,execUsd:0,recent:[]};
-  const pcHead = `<div>총 신호: <b>${pc.total}</b> | 실주문: <b>${pc.executed}</b> | 드라이런: ${pc.dryRuns}</div>
-    <div>실주문 누적 USD: <b>$${Number(pc.execUsd).toFixed(2)}</b></div>`;
-  const pcRows = (pc.recent || []).slice(0,8).map((x)=>{
-      const cls = x.mode==='EXECUTE' ? 'ok' : 'muted';
-      return `<div class='${cls}'>${new Date((x.ts||0)*1000).toLocaleString()} | ${x.mode} | ${x.slug||'-'} | $${Number(x.my_usd||0).toFixed(2)} | whale ${String(x.whale||'').slice(0,8)}...</div>`;
-    }).join('') || '<div class="muted">카피트레이딩 로그 없음</div>';
-  document.getElementById('pmcopy').innerHTML = pcHead + pcRows;
+  const ops = `
+    <div>RPC: <span class='${d.rpc?.ok?'ok':'bad'}'>${d.rpc?.ok?'정상':'오류'}</span> / DEX Pair: ${d.dexPair}</div>
+    <div>Polymarket WS: <span class='${d.ws?.ws_connected?'ok':'bad'}'>${d.ws?.ws_connected?'연결됨':'끊김'}</span> (msg ${d.ws?.ws_messages||0})</div>
+    <div>Hyperliquid 주소: <span class='mono'>${hl.address||'-'}</span></div>
+    <div>Polymarket 카피 실주문: ${pc.executed||0}건, 누적 집행 ${fmtUsd(pc.execUsd)}</div>
+  `;
+  document.getElementById('ops').innerHTML = ops;
 }
 setInterval(tick,5000); tick();
 </script>
