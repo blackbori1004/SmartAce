@@ -12,14 +12,20 @@ from hyperliquid.utils import constants
 DEX_URL = "https://api.dexscreener.com/latest/dex/search"
 BINANCE_KLINES = "https://api.binance.com/api/v3/klines"
 PAIR = os.getenv("DEX_PAIR", "WETH/USDC")
-INTERVAL = int(os.getenv("PAPER_INTERVAL_SEC", "8"))
-MIN_SPREAD = float(os.getenv("PAPER_MIN_SPREAD_PCT", "0.35"))
+INTERVAL = int(os.getenv("PAPER_INTERVAL_SEC", "3"))
+MIN_SPREAD = float(os.getenv("PAPER_MIN_SPREAD_PCT", "0.20"))
 USD_SIZE = float(os.getenv("PAPER_NOTIONAL_USD", "400"))
-LEVERAGE = int(os.getenv("HL_LIVE_LEVERAGE", "5"))  # 공격적 상향 기본 5x
+LEVERAGE = int(os.getenv("HL_LIVE_LEVERAGE", "5"))
 SYMBOL = os.getenv("HL_LIVE_SYMBOL", "BTC")
 ACCOUNT = os.getenv("HL_ACCOUNT_ADDRESS", "").strip()
 MAX_LOSS_STREAK = int(os.getenv("HL_MAX_LOSS_STREAK", "3"))
-BREAKEVEN_TRIGGER_PCT = float(os.getenv("HL_BREAKEVEN_TRIGGER_PCT", "0.6"))
+BREAKEVEN_TRIGGER_PCT = float(os.getenv("HL_BREAKEVEN_TRIGGER_PCT", "0.20"))
+SCALP_MODE = os.getenv("HL_SCALP_MODE", "1") == "1"
+SCALP_RSI_LONG = float(os.getenv("HL_SCALP_RSI_LONG", "53"))
+SCALP_RSI_SHORT = float(os.getenv("HL_SCALP_RSI_SHORT", "47"))
+SCALP_ATR_MIN = float(os.getenv("HL_SCALP_ATR_MIN", "0.10"))
+SCALP_ATR_MAX = float(os.getenv("HL_SCALP_ATR_MAX", "1.10"))
+SCALP_BREAKOUT_BPS = float(os.getenv("HL_SCALP_BREAKOUT_BPS", "3.0"))
 
 STATE_DIR = Path(__file__).resolve().parents[1] / "state"
 POS_PATH = STATE_DIR / "open_position.json"
@@ -77,37 +83,37 @@ def get_klines(symbol: str, interval: str, limit: int):
 
 
 def strategy_signal(symbol: str):
-    # 전문가 컨플루언스: HTF 추세 + LTF 모멘텀 + 변동성 + 돌파
-    c1h, _, _ = get_klines(symbol, "1h", 260)
-    c5m, h5m, l5m = get_klines(symbol, "5m", 220)
+    # 스캘핑 모드: 15m 추세 + 1m 모멘텀/돌파로 빈도 증가
+    c15, _, _ = get_klines(symbol, "15m", 180)
+    c1m, h1m, l1m = get_klines(symbol, "1m", 180)
 
-    ema50 = ema(c1h[-200:], 50)
-    ema200 = ema(c1h[-200:], 200)
-    if ema50 is None or ema200 is None:
+    ema_fast = ema(c15[-120:], 20)
+    ema_slow = ema(c15[-120:], 60)
+    if ema_fast is None or ema_slow is None:
         return None, "ema-insufficient"
 
-    trend = "buy" if ema50 > ema200 else "sell"
+    trend = "buy" if ema_fast > ema_slow else "sell"
 
-    r = rsi(c5m, 14)
-    a = atr(h5m, l5m, c5m, 14)
+    r = rsi(c1m, 14)
+    a = atr(h1m, l1m, c1m, 14)
     if r is None or a is None:
         return None, "indicator-insufficient"
 
-    price = c5m[-1]
+    price = c1m[-1]
     atr_pct = (a / price) * 100 if price else 0
-    hi20 = max(h5m[-21:-1])
-    lo20 = min(l5m[-21:-1])
+    hi = max(h1m[-15:-1])
+    lo = min(l1m[-15:-1])
+    breakout_pad = price * (SCALP_BREAKOUT_BPS / 10000.0)
 
-    # 변동성 밴드: 너무 조용/너무 과열 구간 제외
-    if atr_pct < 0.12 or atr_pct > 1.8:
+    if atr_pct < SCALP_ATR_MIN or atr_pct > SCALP_ATR_MAX:
         return None, f"atr-filter {atr_pct:.3f}%"
 
     if trend == "buy":
-        cond = r >= 55 and price > hi20
-        return ("buy", f"trend=up rsi={r:.1f} breakout={price:.1f}>{hi20:.1f}") if cond else (None, f"long-filter rsi={r:.1f}")
+        cond = r >= SCALP_RSI_LONG and price >= (hi - breakout_pad)
+        return ("buy", f"scalp-up rsi={r:.1f} px={price:.1f} hi={hi:.1f}") if cond else (None, f"long-filter rsi={r:.1f}")
     else:
-        cond = r <= 45 and price < lo20
-        return ("sell", f"trend=down rsi={r:.1f} breakdown={price:.1f}<{lo20:.1f}") if cond else (None, f"short-filter rsi={r:.1f}")
+        cond = r <= SCALP_RSI_SHORT and price <= (lo + breakout_pad)
+        return ("sell", f"scalp-down rsi={r:.1f} px={price:.1f} lo={lo:.1f}") if cond else (None, f"short-filter rsi={r:.1f}")
 
 
 def spread_ok() -> tuple[bool, float]:
@@ -323,7 +329,7 @@ def run_once():
 
 def main():
     print(
-        f"live trader started: pair={PAIR}, min_spread={MIN_SPREAD}%, usd={USD_SIZE}, symbol={SYMBOL}, lev={LEVERAGE}x, every={INTERVAL}s"
+        f"live trader started: mode={'SCALP' if SCALP_MODE else 'TREND'}, pair={PAIR}, min_spread={MIN_SPREAD}%, usd={USD_SIZE}, symbol={SYMBOL}, lev={LEVERAGE}x, every={INTERVAL}s"
     )
     while True:
         try:
