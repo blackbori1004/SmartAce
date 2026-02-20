@@ -45,7 +45,23 @@ python scripts/dex_quote_monitor.py --pair ETH/USDC --interval 8
 - DexScreener 공용 API로 복수 DEX 가격 비교
 - 체결은 없음. **기회 탐지**만 수행
 
-## 5) 다음 단계 (내가 같이 붙어서 진행)
+## 5) 웹 대시보드 (추천)
+
+```bash
+python scripts/dashboard.py
+```
+
+브라우저에서 열기:
+
+- http://127.0.0.1:8788
+
+표시 항목:
+
+- ETH RPC 연결/블록 높이
+- DEX 스프레드(ETH/USDC)
+- Polymarket WS 연결 상태/메시지 카운트
+
+## 6) 다음 단계 (내가 같이 붙어서 진행)
 
 1. 알림 임계값 튜닝 (거짓신호 줄이기)
 2. CSV 로그 누적

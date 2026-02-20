@@ -14,6 +14,9 @@ def fetch_pairs(pair_query: str):
     return data.get("pairs", [])
 
 
+ALLOWED_CHAINS = {"ethereum", "base", "arbitrum", "optimism", "polygon", "bsc", "scroll", "linea", "manta", "soneium", "seiv2", "katana"}
+
+
 def normalize(pair):
     return {
         "dex": pair.get("dexId"),
@@ -22,6 +25,8 @@ def normalize(pair):
         "price": float(pair.get("priceUsd") or 0),
         "liquidity": float((pair.get("liquidity") or {}).get("usd") or 0),
         "volume24h": float((pair.get("volume") or {}).get("h24") or 0),
+        "base": ((pair.get("baseToken") or {}).get("symbol") or "").upper(),
+        "quote": ((pair.get("quoteToken") or {}).get("symbol") or "").upper(),
         "url": pair.get("url"),
     }
 
@@ -35,11 +40,23 @@ def main():
 
     print(f"Monitoring {args.pair} every {args.interval}s (min liquidity ${args.min_liquidity:,.0f})")
 
+    want_base, want_quote = [x.strip().upper() for x in args.pair.split("/")]
+    base_alias = {want_base, "WETH"} if want_base == "ETH" else {want_base}
+    quote_alias = {want_quote, "USDC.E", "USDB"} if want_quote == "USDC" else {want_quote}
+
     while True:
         try:
             raw = fetch_pairs(args.pair)
             rows = [normalize(p) for p in raw]
-            rows = [r for r in rows if r["price"] > 0 and r["liquidity"] >= args.min_liquidity]
+            rows = [
+                r
+                for r in rows
+                if r["price"] > 0
+                and r["liquidity"] >= args.min_liquidity
+                and r["chain"] in ALLOWED_CHAINS
+                and r["base"] in base_alias
+                and r["quote"] in quote_alias
+            ]
             if len(rows) < 2:
                 print("Not enough liquid pairs yet...")
                 time.sleep(args.interval)
