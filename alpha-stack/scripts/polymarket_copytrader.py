@@ -101,25 +101,24 @@ def run_once(
     seen = st.get("seen", {})
     client = build_client() if execute else None
 
-    actions = []
-    total_usd = 0.0
-    stop = False
+    now = int(time.time())
+    candidates = []
+    consensus: Dict[str, set] = {}
+
     for w in whales:
         trades = fetch_user_trades(w, limit=30)
         for t in reversed(trades):
             k = trade_key(t)
             if seen.get(k):
                 continue
-            seen[k] = int(time.time())
 
             ts_raw = int(t.get("timestamp") or 0)
-            if max_age_minutes > 0 and ts_raw > 0:
-                if ts_raw < int(time.time()) - max_age_minutes * 60:
-                    continue
+            if max_age_minutes > 0 and ts_raw > 0 and ts_raw < now - max_age_minutes * 60:
+                continue
 
             side = (t.get("side") or "").upper()
             if side != "BUY":
-                continue  # MVP: buy-copy only (sell-copy는 포지션/재고 동기화 필요)
+                continue
 
             asset = str(t.get("asset") or "")
             price = float(t.get("price") or 0)
@@ -128,39 +127,73 @@ def run_once(
             if not asset or whale_cash < min_whale_cash:
                 continue
 
-            my_usd = min(usd_cap, max(1.0, whale_cash * usd_scale))
-            if total_usd + my_usd > max_total_usd:
-                continue
+            seen[k] = now
+            consensus.setdefault(asset, set()).add(w)
+            candidates.append(
+                {
+                    "k": k,
+                    "whale": w,
+                    "title": t.get("title"),
+                    "slug": t.get("slug"),
+                    "asset": asset,
+                    "side": side,
+                    "price": price,
+                    "whale_cash": whale_cash,
+                }
+            )
 
-            plan = {
-                "whale": w,
-                "title": t.get("title"),
-                "slug": t.get("slug"),
-                "asset": asset,
-                "side": side,
-                "whale_cash": round(whale_cash, 4),
-                "my_usd": round(my_usd, 4),
-                "price": price,
-                "ts": int(time.time()),
-            }
+    # 고래 합의(동일 asset 동시 매수) + 승률(시장암묵확률=price) 가중치
+    for c in candidates:
+        base_usd = min(usd_cap, max(1.0, c["whale_cash"] * usd_scale))
+        whale_count = len(consensus.get(c["asset"], set()))
+        consensus_weight = min(2.2, 1.0 + 0.40 * (whale_count - 1))
+        prob_weight = min(1.6, max(0.7, 0.6 + 0.8 * c["price"]))
+        weighted_usd = min(usd_cap, base_usd * consensus_weight * prob_weight)
 
-            if execute:
-                mo = MarketOrderArgs(token_id=asset, amount=my_usd, side=BUY)
-                signed = client.create_market_order(mo)
-                res = client.post_order(signed, OrderType.FOK)
-                plan["result"] = res
-                plan["mode"] = "EXECUTE"
-            else:
-                plan["mode"] = "DRY_RUN"
+        c["whale_count"] = whale_count
+        c["consensus_weight"] = round(consensus_weight, 3)
+        c["prob_weight"] = round(prob_weight, 3)
+        c["my_usd"] = round(weighted_usd, 4)
 
-            actions.append(plan)
-            total_usd += my_usd
-            log_event(plan)
+    # 강한 합의/가중치 순으로 실행
+    candidates.sort(key=lambda x: (x["whale_count"], x["my_usd"], x["whale_cash"]), reverse=True)
 
-            if len(actions) >= max_actions:
-                stop = True
-                break
-        if stop:
+    actions = []
+    total_usd = 0.0
+    for c in candidates:
+        my_usd = float(c["my_usd"])
+        if total_usd + my_usd > max_total_usd:
+            continue
+
+        plan = {
+            "whale": c["whale"],
+            "title": c["title"],
+            "slug": c["slug"],
+            "asset": c["asset"],
+            "side": c["side"],
+            "whale_cash": round(c["whale_cash"], 4),
+            "my_usd": round(my_usd, 4),
+            "price": c["price"],
+            "whale_count": c["whale_count"],
+            "consensus_weight": c["consensus_weight"],
+            "prob_weight": c["prob_weight"],
+            "ts": int(time.time()),
+        }
+
+        if execute:
+            mo = MarketOrderArgs(token_id=c["asset"], amount=my_usd, side=BUY)
+            signed = client.create_market_order(mo)
+            res = client.post_order(signed, OrderType.FOK)
+            plan["result"] = res
+            plan["mode"] = "EXECUTE"
+        else:
+            plan["mode"] = "DRY_RUN"
+
+        actions.append(plan)
+        total_usd += my_usd
+        log_event(plan)
+
+        if len(actions) >= max_actions:
             break
 
     st["seen"] = seen
