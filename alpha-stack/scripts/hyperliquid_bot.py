@@ -23,7 +23,7 @@ KILL_SWITCH = Path.home() / ".openclaw" / "workspace" / ".pi" / "hyperliquid.pau
 
 @dataclass
 class RiskConfig:
-    max_notional_usd: float = float(os.getenv("HL_MAX_NOTIONAL_USD", "100"))
+    max_notional_usd: float = float(os.getenv("HL_MAX_NOTIONAL_USD", "400"))
     max_daily_loss_pct: float = float(os.getenv("HL_MAX_DAILY_LOSS_PCT", "3"))
     max_slippage: float = float(os.getenv("HL_MAX_SLIPPAGE", "0.003"))
     max_open_positions: int = int(os.getenv("HL_MAX_OPEN_POSITIONS", "1"))

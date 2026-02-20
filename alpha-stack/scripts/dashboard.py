@@ -24,7 +24,7 @@ DASHBOARD_TOKEN = os.getenv("DASHBOARD_TOKEN") or secrets.token_urlsafe(12)
 
 PAPER_INTERVAL_SEC = int(os.getenv("PAPER_INTERVAL_SEC", "8"))
 PAPER_START_USD = float(os.getenv("PAPER_START_USD", "1000"))
-PAPER_NOTIONAL_USD = float(os.getenv("PAPER_NOTIONAL_USD", "100"))
+PAPER_NOTIONAL_USD = float(os.getenv("PAPER_NOTIONAL_USD", "400"))
 PAPER_MIN_SPREAD_PCT = float(os.getenv("PAPER_MIN_SPREAD_PCT", "0.35"))
 PAPER_CAPTURE_RATIO = float(os.getenv("PAPER_CAPTURE_RATIO", "0.30"))
 PAPER_COST_BPS = float(os.getenv("PAPER_COST_BPS", "10"))
