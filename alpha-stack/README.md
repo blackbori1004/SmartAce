@@ -87,6 +87,9 @@ python scripts/hyperliquid_bot.py order --symbol BTC --side buy --usd 100 --leve
 
 # 실주문 1회 실행
 python scripts/hyperliquid_bot.py order --symbol BTC --side buy --usd 100 --leverage 2 --execute
+
+# 페이퍼 조건과 동일한 실거래 루프 시작
+python -u scripts/live_trader.py
 ```
 
 환경변수:
