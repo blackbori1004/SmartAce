@@ -148,7 +148,10 @@ def place_market(symbol: str, side: str, usd_size: float, leverage: int, execute
     risk = _risk_checks(info, addr, usd_size, cfg)
 
     mid = _get_mid(info, symbol)
-    sz = usd_size / mid
+    raw_sz = usd_size / mid
+    asset = info.name_to_asset(symbol)
+    sz_decimals = info.asset_to_sz_decimals[asset]
+    sz = float(f"{raw_sz:.{sz_decimals}f}")
     is_buy = side == "buy"
 
     plan = {
