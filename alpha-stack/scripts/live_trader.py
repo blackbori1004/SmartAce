@@ -21,18 +21,28 @@ ACCOUNT = os.getenv("HL_ACCOUNT_ADDRESS", "").strip()
 MAX_LOSS_STREAK = int(os.getenv("HL_MAX_LOSS_STREAK", "3"))
 BREAKEVEN_TRIGGER_PCT = float(os.getenv("HL_BREAKEVEN_TRIGGER_PCT", "0.20"))
 SCALP_MODE = os.getenv("HL_SCALP_MODE", "1") == "1"
-SCALP_RSI_LONG = float(os.getenv("HL_SCALP_RSI_LONG", "53"))
-SCALP_RSI_SHORT = float(os.getenv("HL_SCALP_RSI_SHORT", "47"))
+SCALP_RSI_LONG_BASE = float(os.getenv("HL_SCALP_RSI_LONG", "53"))
+SCALP_RSI_SHORT_BASE = float(os.getenv("HL_SCALP_RSI_SHORT", "47"))
 SCALP_ATR_MIN = float(os.getenv("HL_SCALP_ATR_MIN", "0.10"))
 SCALP_ATR_MAX = float(os.getenv("HL_SCALP_ATR_MAX", "1.10"))
 SCALP_BREAKOUT_BPS = float(os.getenv("HL_SCALP_BREAKOUT_BPS", "3.0"))
+SCALP_FEE_BPS_RT = float(os.getenv("HL_SCALP_FEE_BPS_RT", "9.0"))
+SCALP_SAFETY_BPS = float(os.getenv("HL_SCALP_SAFETY_BPS", "4.0"))
 
 STATE_DIR = Path(__file__).resolve().parents[1] / "state"
 POS_PATH = STATE_DIR / "open_position.json"
 TRADES_PATH = STATE_DIR / "trades.jsonl"
 KILL_SWITCH = Path.home() / ".openclaw" / "workspace" / ".pi" / "hyperliquid.pause"
+ADAPT_PATH = STATE_DIR / "scalp_params.json"
 
 ALLOWED_CHAINS = {"ethereum", "base", "arbitrum", "optimism", "polygon", "bsc", "scroll", "linea", "manta", "soneium", "seiv2", "katana"}
+
+adaptive = {
+    "rsi_long": SCALP_RSI_LONG_BASE,
+    "rsi_short": SCALP_RSI_SHORT_BASE,
+    "min_spread": MIN_SPREAD,
+    "updated_ts": 0,
+}
 
 
 def ema(vals, n):
@@ -109,14 +119,14 @@ def strategy_signal(symbol: str):
         return None, f"atr-filter {atr_pct:.3f}%"
 
     if trend == "buy":
-        cond = r >= SCALP_RSI_LONG and price >= (hi - breakout_pad)
+        cond = r >= adaptive["rsi_long"] and price >= (hi - breakout_pad)
         return ("buy", f"scalp-up rsi={r:.1f} px={price:.1f} hi={hi:.1f}") if cond else (None, f"long-filter rsi={r:.1f}")
     else:
-        cond = r <= SCALP_RSI_SHORT and price <= (lo + breakout_pad)
+        cond = r <= adaptive["rsi_short"] and price <= (lo + breakout_pad)
         return ("sell", f"scalp-down rsi={r:.1f} px={price:.1f} lo={lo:.1f}") if cond else (None, f"short-filter rsi={r:.1f}")
 
 
-def spread_ok() -> tuple[bool, float]:
+def spread_ok(min_spread: float) -> tuple[bool, float]:
     want_base, want_quote = [x.strip().upper() for x in PAIR.split("/")]
     base_alias = {want_base, "WETH"} if want_base == "ETH" else {want_base}
     quote_alias = {want_quote, "USDC.E", "USDB"} if want_quote == "USDC" else {want_quote}
@@ -138,7 +148,7 @@ def spread_ok() -> tuple[bool, float]:
     low = min(rows)
     high = max(rows)
     spread = ((high - low) / low) * 100
-    return spread >= MIN_SPREAD, spread
+    return spread >= min_spread, spread
 
 
 def has_open_position(symbol: str) -> bool:
@@ -179,6 +189,57 @@ def loss_streak() -> int:
 def log_trade(obj: dict):
     with TRADES_PATH.open("a") as f:
         f.write(json.dumps(obj, ensure_ascii=False) + "\n")
+
+
+def load_adaptive():
+    if ADAPT_PATH.exists():
+        try:
+            d = json.loads(ADAPT_PATH.read_text())
+            adaptive["rsi_long"] = float(d.get("rsi_long", adaptive["rsi_long"]))
+            adaptive["rsi_short"] = float(d.get("rsi_short", adaptive["rsi_short"]))
+            adaptive["min_spread"] = float(d.get("min_spread", adaptive["min_spread"]))
+            adaptive["updated_ts"] = int(d.get("updated_ts", 0))
+        except Exception:
+            pass
+
+
+def save_adaptive():
+    ADAPT_PATH.write_text(json.dumps(adaptive, ensure_ascii=False, indent=2))
+
+
+def apply_adaptive_tuning():
+    now = int(time.time())
+    if adaptive.get("updated_ts", 0) and now - adaptive["updated_ts"] < 60:
+        return
+
+    if not TRADES_PATH.exists():
+        return
+    rows = []
+    for ln in TRADES_PATH.read_text().strip().splitlines()[-60:]:
+        try:
+            t = json.loads(ln)
+            if t.get("kind") == "closed":
+                rows.append(t)
+        except Exception:
+            pass
+    if len(rows) < 8:
+        adaptive["updated_ts"] = now
+        return
+
+    wins = [x for x in rows if float(x.get("pnl_usd", 0)) > 0]
+    wr = len(wins) / len(rows) * 100.0
+
+    if wr < 45:
+        adaptive["rsi_long"] = min(58.0, adaptive["rsi_long"] + 0.5)
+        adaptive["rsi_short"] = max(42.0, adaptive["rsi_short"] - 0.5)
+        adaptive["min_spread"] = min(0.35, adaptive["min_spread"] + 0.01)
+    elif wr > 58:
+        adaptive["rsi_long"] = max(51.5, adaptive["rsi_long"] - 0.3)
+        adaptive["rsi_short"] = min(48.5, adaptive["rsi_short"] + 0.3)
+        adaptive["min_spread"] = max(0.12, adaptive["min_spread"] - 0.005)
+
+    adaptive["updated_ts"] = now
+    save_adaptive()
 
 
 def maybe_close_on_tpsl() -> bool:
@@ -271,6 +332,7 @@ def maybe_close_on_tpsl() -> bool:
 
 def run_once():
     maybe_close_on_tpsl()
+    apply_adaptive_tuning()
 
     if KILL_SWITCH.exists():
         print("kill-switch active -> entry paused")
@@ -281,12 +343,14 @@ def run_once():
         print(f"[{ts}] position-open -> skip entry")
         return
 
-    spread_pass, spread = spread_ok()
+    max_slip_bps = float(os.getenv("HL_MAX_SLIPPAGE", "0.0012")) * 10000.0
+    required_spread = max(adaptive["min_spread"], (SCALP_FEE_BPS_RT + SCALP_SAFETY_BPS + max_slip_bps) / 100.0)
+    spread_pass, spread = spread_ok(required_spread)
     side, why = strategy_signal(SYMBOL)
 
     ts = time.strftime("%Y-%m-%d %H:%M:%S")
     if not spread_pass or not side:
-        print(f"[{ts}] no-entry spread={spread:.3f}% side={side} reason={why}")
+        print(f"[{ts}] no-entry spread={spread:.3f}% req={required_spread:.3f}% side={side} reason={why}")
         return
 
     print(f"[{ts}] SIGNAL side={side} spread={spread:.3f}% reason={why} -> try order")
@@ -328,8 +392,9 @@ def run_once():
 
 
 def main():
+    load_adaptive()
     print(
-        f"live trader started: mode={'SCALP' if SCALP_MODE else 'TREND'}, pair={PAIR}, min_spread={MIN_SPREAD}%, usd={USD_SIZE}, symbol={SYMBOL}, lev={LEVERAGE}x, every={INTERVAL}s"
+        f"live trader started: mode={'SCALP' if SCALP_MODE else 'TREND'}, pair={PAIR}, min_spread={adaptive['min_spread']}%, usd={USD_SIZE}, symbol={SYMBOL}, lev={LEVERAGE}x, every={INTERVAL}s"
     )
     while True:
         try:
