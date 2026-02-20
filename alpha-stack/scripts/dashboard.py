@@ -29,6 +29,7 @@ PAPER_MIN_SPREAD_PCT = float(os.getenv("PAPER_MIN_SPREAD_PCT", "0.35"))
 PAPER_CAPTURE_RATIO = float(os.getenv("PAPER_CAPTURE_RATIO", "0.30"))
 PAPER_COST_BPS = float(os.getenv("PAPER_COST_BPS", "10"))
 HIST_PATH = Path(__file__).resolve().parents[1] / "state" / "fills.jsonl"
+TRADES_PATH = Path(__file__).resolve().parents[1] / "state" / "trades.jsonl"
 
 state: Dict[str, Any] = {
     "ws_connected": False,
@@ -222,6 +223,22 @@ def load_history(limit: int = 15) -> list:
     return out
 
 
+def load_trade_stats(limit: int = 30) -> Dict[str, Any]:
+    if not TRADES_PATH.exists():
+        return {"trades": [], "closed": 0, "wins": 0, "winRate": 0.0, "cumPnl": 0.0}
+    rows = []
+    for ln in TRADES_PATH.read_text().strip().splitlines():
+        try:
+            rows.append(json.loads(ln))
+        except Exception:
+            pass
+    closed = [x for x in rows if x.get("kind") == "closed"]
+    wins = [x for x in closed if float(x.get("pnl_usd", 0)) > 0]
+    cum = sum(float(x.get("pnl_usd", 0)) for x in closed)
+    wr = (len(wins) / len(closed) * 100.0) if closed else 0.0
+    return {"trades": rows[-limit:][::-1], "closed": len(closed), "wins": len(wins), "winRate": wr, "cumPnl": cum}
+
+
 def paper_worker():
     while True:
         snap = dex_spread()
@@ -330,14 +347,19 @@ async function tick(){
     : `<div class='bad'>${d.hl.error}</div>`;
   document.getElementById('hl').innerHTML = hl;
 
-  const hist = (d.history || []).map((x)=>{
-      const o = (x.order_result||{}).response?.data?.statuses?.[0]?.filled;
-      const side = x.plan?.side || '-';
-      const sym = x.plan?.symbol || '-';
-      if(!o) return '';
-      return `<div class='muted'>${new Date((x.ts||0)*1000).toLocaleString()} | ${sym} ${side} ${o.totalSz} @ ${o.avgPx}</div>`;
+  const ts = d.tradeStats || {trades:[],closed:0,wins:0,winRate:0,cumPnl:0};
+  const header = `<div>누적 PnL: <b class='${ts.cumPnl>=0?'ok':'bad'}'>$${Number(ts.cumPnl).toFixed(2)}</b></div>
+    <div>종료 거래: ${ts.closed} | 승률: ${Number(ts.winRate).toFixed(1)}%</div>`;
+  const rows = (ts.trades || []).map((x)=>{
+      if(x.kind==='closed'){
+        return `<div class='muted'>${new Date((x.ts||0)*1000).toLocaleString()} | ${x.symbol} ${x.side} 종료 ${x.reason||'-'} | PnL <span class='${x.pnl_usd>=0?'ok':'bad'}'>$${Number(x.pnl_usd).toFixed(2)}</span></div>`;
+      }
+      if(x.kind==='opened'){
+        return `<div class='muted'>${new Date((x.ts||0)*1000).toLocaleString()} | ${x.symbol} ${x.side} 진입 ${x.size} @ ${x.entry}</div>`;
+      }
+      return '';
     }).join('') || '<div class="muted">히스토리 없음</div>';
-  document.getElementById('hist').innerHTML = hist;
+  document.getElementById('hist').innerHTML = header + rows;
 }
 setInterval(tick,5000); tick();
 </script>
@@ -357,6 +379,7 @@ def api_status():
             "ws": state,
             "hl": hyperliquid_state(),
             "history": load_history(),
+            "tradeStats": load_trade_stats(),
             "paper": {
                 **paper,
                 "config": {
