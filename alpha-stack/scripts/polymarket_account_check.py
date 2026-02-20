@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
+import base64
+import binascii
 import json
 import os
 from pathlib import Path
 
 from dotenv import load_dotenv
 from py_clob_client.client import ClobClient
+from py_clob_client.clob_types import ApiCreds
 
 ROOT = Path(__file__).resolve().parents[1]
 ENV_PATH = ROOT / ".env.polymarket"
@@ -12,6 +15,14 @@ ENV_PATH = ROOT / ".env.polymarket"
 
 def _getenv(name: str, default: str = "") -> str:
     return os.getenv(name, default).strip()
+
+
+def _looks_base64(s: str) -> bool:
+    try:
+        base64.b64decode(s, validate=True)
+        return True
+    except (binascii.Error, ValueError):
+        return False
 
 
 def build_client() -> ClobClient:
@@ -32,8 +43,8 @@ def build_client() -> ClobClient:
     api_secret = _getenv("POLYMARKET_API_SECRET")
     api_pass = _getenv("POLYMARKET_API_PASSPHRASE")
 
-    if api_key and api_secret and api_pass:
-        client.set_api_creds({"key": api_key, "secret": api_secret, "passphrase": api_pass})
+    if api_key and api_secret and api_pass and _looks_base64(api_secret):
+        client.set_api_creds(ApiCreds(api_key=api_key, api_secret=api_secret, api_passphrase=api_pass))
         mode = "provided-api-creds"
     else:
         creds = client.create_or_derive_api_creds()
