@@ -30,6 +30,7 @@ PAPER_CAPTURE_RATIO = float(os.getenv("PAPER_CAPTURE_RATIO", "0.30"))
 PAPER_COST_BPS = float(os.getenv("PAPER_COST_BPS", "10"))
 HIST_PATH = Path(__file__).resolve().parents[1] / "state" / "fills.jsonl"
 TRADES_PATH = Path(__file__).resolve().parents[1] / "state" / "trades.jsonl"
+POLY_COPY_LOG_PATH = Path(__file__).resolve().parents[1] / "state" / "polymarket_copy_log.jsonl"
 
 state: Dict[str, Any] = {
     "ws_connected": False,
@@ -273,6 +274,29 @@ def load_trade_stats(limit: int = 30) -> Dict[str, Any]:
     return {"trades": rows[-limit:][::-1], "closed": len(closed), "wins": len(wins), "winRate": wr, "cumPnl": cum}
 
 
+def load_polymarket_copy_stats(limit: int = 20) -> Dict[str, Any]:
+    rows = []
+    if POLY_COPY_LOG_PATH.exists():
+        for ln in POLY_COPY_LOG_PATH.read_text().strip().splitlines():
+            try:
+                rows.append(json.loads(ln))
+            except Exception:
+                pass
+
+    recent = rows[-limit:][::-1]
+    executed = [x for x in rows if x.get("mode") == "EXECUTE"]
+    dry = [x for x in rows if x.get("mode") == "DRY_RUN"]
+    total_exec_usd = sum(float(x.get("my_usd", 0) or 0) for x in executed)
+
+    return {
+        "total": len(rows),
+        "executed": len(executed),
+        "dryRuns": len(dry),
+        "execUsd": total_exec_usd,
+        "recent": recent,
+    }
+
+
 def paper_worker():
     while True:
         snap = dex_spread()
@@ -336,6 +360,7 @@ def index():
     <div class='card'><h3>페이퍼 트레이딩</h3><div id='paper'></div></div>
     <div class='card'><h3>Hyperliquid 현황</h3><div id='hl'></div></div>
     <div class='card'><h3>실행 히스토리</h3><div id='hist'></div></div>
+    <div class='card'><h3>Polymarket 카피트레이딩</h3><div id='pmcopy'></div></div>
   </div>
 <script>
 const token = new URLSearchParams(window.location.search).get('token') || '';
@@ -394,6 +419,15 @@ async function tick(){
       return '';
     }).join('') || '<div class="muted">히스토리 없음</div>';
   document.getElementById('hist').innerHTML = header + rows;
+
+  const pc = d.polymarketCopy || {total:0,executed:0,dryRuns:0,execUsd:0,recent:[]};
+  const pcHead = `<div>총 신호: <b>${pc.total}</b> | 실주문: <b>${pc.executed}</b> | 드라이런: ${pc.dryRuns}</div>
+    <div>실주문 누적 USD: <b>$${Number(pc.execUsd).toFixed(2)}</b></div>`;
+  const pcRows = (pc.recent || []).slice(0,8).map((x)=>{
+      const cls = x.mode==='EXECUTE' ? 'ok' : 'muted';
+      return `<div class='${cls}'>${new Date((x.ts||0)*1000).toLocaleString()} | ${x.mode} | ${x.slug||'-'} | $${Number(x.my_usd||0).toFixed(2)} | whale ${String(x.whale||'').slice(0,8)}...</div>`;
+    }).join('') || '<div class="muted">카피트레이딩 로그 없음</div>';
+  document.getElementById('pmcopy').innerHTML = pcHead + pcRows;
 }
 setInterval(tick,5000); tick();
 </script>
@@ -414,6 +448,7 @@ def api_status():
             "hl": hyperliquid_state(),
             "history": load_history(),
             "tradeStats": load_trade_stats(),
+            "polymarketCopy": load_polymarket_copy_stats(),
             "paper": {
                 **paper,
                 "config": {

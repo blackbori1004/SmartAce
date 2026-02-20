@@ -87,12 +87,23 @@ def trade_key(t: Dict) -> str:
     )
 
 
-def run_once(whales: List[str], usd_scale: float, usd_cap: float, min_whale_cash: float, execute: bool) -> None:
+def run_once(
+    whales: List[str],
+    usd_scale: float,
+    usd_cap: float,
+    min_whale_cash: float,
+    execute: bool,
+    max_actions: int,
+    max_total_usd: float,
+    max_age_minutes: int,
+) -> None:
     st = load_state()
     seen = st.get("seen", {})
     client = build_client() if execute else None
 
     actions = []
+    total_usd = 0.0
+    stop = False
     for w in whales:
         trades = fetch_user_trades(w, limit=30)
         for t in reversed(trades):
@@ -100,6 +111,11 @@ def run_once(whales: List[str], usd_scale: float, usd_cap: float, min_whale_cash
             if seen.get(k):
                 continue
             seen[k] = int(time.time())
+
+            ts_raw = int(t.get("timestamp") or 0)
+            if max_age_minutes > 0 and ts_raw > 0:
+                if ts_raw < int(time.time()) - max_age_minutes * 60:
+                    continue
 
             side = (t.get("side") or "").upper()
             if side != "BUY":
@@ -113,6 +129,9 @@ def run_once(whales: List[str], usd_scale: float, usd_cap: float, min_whale_cash
                 continue
 
             my_usd = min(usd_cap, max(1.0, whale_cash * usd_scale))
+            if total_usd + my_usd > max_total_usd:
+                continue
+
             plan = {
                 "whale": w,
                 "title": t.get("title"),
@@ -135,11 +154,18 @@ def run_once(whales: List[str], usd_scale: float, usd_cap: float, min_whale_cash
                 plan["mode"] = "DRY_RUN"
 
             actions.append(plan)
+            total_usd += my_usd
             log_event(plan)
+
+            if len(actions) >= max_actions:
+                stop = True
+                break
+        if stop:
+            break
 
     st["seen"] = seen
     save_state(st)
-    print(json.dumps({"ok": True, "actions": len(actions), "execute": execute}, ensure_ascii=False))
+    print(json.dumps({"ok": True, "actions": len(actions), "execute": execute, "total_usd": round(total_usd, 4)}, ensure_ascii=False))
     for a in actions[:10]:
         print(json.dumps(a, ensure_ascii=False))
 
@@ -153,6 +179,9 @@ def main() -> None:
     ap.add_argument("--loop", action="store_true", help="run continuously")
     ap.add_argument("--interval", type=int, default=20)
     ap.add_argument("--execute", action="store_true", help="actually place orders")
+    ap.add_argument("--max-actions", type=int, default=1, help="max copied trades per run")
+    ap.add_argument("--max-total-usd", type=float, default=10.0, help="max total USD copied per run")
+    ap.add_argument("--max-age-minutes", type=int, default=120, help="copy only recent whale trades (0=disable)")
     args = ap.parse_args()
 
     whales = [x.strip() for x in args.whales.split(",") if x.strip()]
@@ -162,12 +191,30 @@ def main() -> None:
     if args.loop:
         while True:
             try:
-                run_once(whales, args.usd_scale, args.usd_cap, args.min_whale_cash, args.execute)
+                run_once(
+                    whales,
+                    args.usd_scale,
+                    args.usd_cap,
+                    args.min_whale_cash,
+                    args.execute,
+                    args.max_actions,
+                    args.max_total_usd,
+                    args.max_age_minutes,
+                )
             except Exception as e:
                 print(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False))
             time.sleep(args.interval)
     else:
-        run_once(whales, args.usd_scale, args.usd_cap, args.min_whale_cash, args.execute)
+        run_once(
+            whales,
+            args.usd_scale,
+            args.usd_cap,
+            args.min_whale_cash,
+            args.execute,
+            args.max_actions,
+            args.max_total_usd,
+            args.max_age_minutes,
+        )
 
 
 if __name__ == "__main__":
