@@ -17,6 +17,7 @@ STATE_DIR = ROOT / "state"
 STATE_DIR.mkdir(exist_ok=True)
 RISK_PATH = STATE_DIR / "risk_state.json"
 LOG_PATH = STATE_DIR / "fills.jsonl"
+POS_PATH = STATE_DIR / "open_position.json"
 KILL_SWITCH = Path.home() / ".openclaw" / "workspace" / ".pi" / "hyperliquid.pause"
 
 
@@ -84,7 +85,7 @@ def _log(event: Dict[str, Any]) -> None:
 def _setup() -> tuple[Info, Exchange, str, RiskConfig]:
     wallet, addr = _wallet_and_address()
     info = Info(constants.MAINNET_API_URL, skip_ws=True)
-    exch = Exchange(wallet, constants.MAINNET_API_URL)
+    exch = Exchange(wallet, constants.MAINNET_API_URL, account_address=addr)
     return info, exch, addr, RiskConfig()
 
 
@@ -141,31 +142,11 @@ def _risk_checks(info: Info, address: str, notional: float, cfg: RiskConfig) -> 
     return {"account_value": acct_val, "daily_loss_pct": daily_loss_pct, "open_positions": open_pos}
 
 
-def _attach_tpsl(exch: Exchange, symbol: str, is_buy: bool, sz: float, avg_px: float, cfg: RiskConfig) -> Dict[str, Any]:
+def _compute_tpsl(is_buy: bool, avg_px: float, cfg: RiskConfig) -> Dict[str, float]:
     # Long: TP above, SL below. Short: inverse.
     tp_px = avg_px * (1 + cfg.tp_pct / 100.0) if is_buy else avg_px * (1 - cfg.tp_pct / 100.0)
     sl_px = avg_px * (1 - cfg.sl_pct / 100.0) if is_buy else avg_px * (1 + cfg.sl_pct / 100.0)
-
-    # reduce-only opposite side
-    close_is_buy = not is_buy
-
-    tp_res = exch.order(
-        symbol,
-        close_is_buy,
-        sz,
-        tp_px,
-        order_type={"trigger": {"triggerPx": tp_px, "isMarket": True, "tpsl": "tp"}},
-        reduce_only=True,
-    )
-    sl_res = exch.order(
-        symbol,
-        close_is_buy,
-        sz,
-        sl_px,
-        order_type={"trigger": {"triggerPx": sl_px, "isMarket": True, "tpsl": "sl"}},
-        reduce_only=True,
-    )
-    return {"tp_px": tp_px, "sl_px": sl_px, "tp_res": tp_res, "sl_res": sl_res}
+    return {"tp_px": tp_px, "sl_px": sl_px}
 
 
 def place_market(symbol: str, side: str, usd_size: float, leverage: int, execute: bool) -> None:
@@ -209,7 +190,21 @@ def place_market(symbol: str, side: str, usd_size: float, leverage: int, execute
         if filled:
             avg_px = float(filled["avgPx"])
             filled_sz = float(filled["totalSz"])
-            tpsl = _attach_tpsl(exch, symbol, is_buy, filled_sz, avg_px, cfg)
+            tpsl = _compute_tpsl(is_buy, avg_px, cfg)
+            POS_PATH.write_text(
+                json.dumps(
+                    {
+                        "symbol": symbol,
+                        "side": side,
+                        "size": filled_sz,
+                        "entry_px": avg_px,
+                        "tp_px": tpsl["tp_px"],
+                        "sl_px": tpsl["sl_px"],
+                        "opened_ts": int(time.time()),
+                    },
+                    indent=2,
+                )
+            )
     except Exception as e:
         tpsl = {"error": str(e)}
 
@@ -229,6 +224,21 @@ def place_market(symbol: str, side: str, usd_size: float, leverage: int, execute
     print(json.dumps(event, indent=2))
 
 
+def close_symbol(symbol: str) -> None:
+    _, exch, addr, _ = _setup()
+    res = exch.market_close(symbol)
+    event = {"type": "market_close", "symbol": symbol, "address": addr, "result": res, "ts": int(time.time())}
+    _log(event)
+    if POS_PATH.exists():
+        try:
+            d = json.loads(POS_PATH.read_text())
+            if d.get("symbol") == symbol:
+                POS_PATH.unlink(missing_ok=True)
+        except Exception:
+            pass
+    print(json.dumps(event, indent=2))
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Hyperliquid execution engine (with risk guard)")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -242,12 +252,17 @@ def main() -> None:
     p_order.add_argument("--leverage", type=int, default=2)
     p_order.add_argument("--execute", action="store_true", help="actually execute (default dry-run)")
 
+    p_close = sub.add_parser("close", help="close symbol market")
+    p_close.add_argument("--symbol", required=True)
+
     args = ap.parse_args()
 
     if args.cmd == "status":
         show_status()
     elif args.cmd == "order":
         place_market(args.symbol, args.side, args.usd, args.leverage, args.execute)
+    elif args.cmd == "close":
+        close_symbol(args.symbol)
 
 
 if __name__ == "__main__":

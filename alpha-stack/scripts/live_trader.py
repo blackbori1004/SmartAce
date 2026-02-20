@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
+import json
 import os
-import time
-import requests
 import subprocess
+import time
+from pathlib import Path
+
+import requests
+from hyperliquid.info import Info
+from hyperliquid.utils import constants
 
 DEX_URL = "https://api.dexscreener.com/latest/dex/search"
 PAIR = os.getenv("DEX_PAIR", "WETH/USDC")
@@ -12,6 +17,10 @@ USD_SIZE = float(os.getenv("PAPER_NOTIONAL_USD", "100"))
 LEVERAGE = int(os.getenv("HL_LIVE_LEVERAGE", "2"))
 SYMBOL = os.getenv("HL_LIVE_SYMBOL", "BTC")
 SIDE = os.getenv("HL_LIVE_SIDE", "buy")
+ACCOUNT = os.getenv("HL_ACCOUNT_ADDRESS", "").strip()
+
+STATE_DIR = Path(__file__).resolve().parents[1] / "state"
+POS_PATH = STATE_DIR / "open_position.json"
 
 ALLOWED_CHAINS = {"ethereum", "base", "arbitrum", "optimism", "polygon", "bsc", "scroll", "linea", "manta", "soneium", "seiv2", "katana"}
 
@@ -42,7 +51,73 @@ def spread_ok() -> tuple[bool, float]:
     return spread >= MIN_SPREAD, spread
 
 
+def has_open_position(symbol: str) -> bool:
+    if not ACCOUNT:
+        return False
+    info = Info(constants.MAINNET_API_URL, skip_ws=True)
+    us = info.user_state(ACCOUNT)
+    for p in us.get("assetPositions", []):
+        pos = p.get("position", {})
+        if pos.get("coin") == symbol and abs(float(pos.get("szi", 0))) > 0:
+            return True
+    return False
+
+
+def current_mid(symbol: str) -> float:
+    info = Info(constants.MAINNET_API_URL, skip_ws=True)
+    return float(info.all_mids().get(symbol, 0))
+
+
+def maybe_close_on_tpsl() -> bool:
+    if not POS_PATH.exists():
+        return False
+    try:
+        pos = json.loads(POS_PATH.read_text())
+        symbol = pos["symbol"]
+        side = pos["side"].lower()
+        tp = float(pos["tp_px"])
+        sl = float(pos["sl_px"])
+        mid = current_mid(symbol)
+        hit = False
+        reason = None
+
+        if side == "buy":
+            if mid >= tp:
+                hit, reason = True, "tp"
+            elif mid <= sl:
+                hit, reason = True, "sl"
+        else:
+            if mid <= tp:
+                hit, reason = True, "tp"
+            elif mid >= sl:
+                hit, reason = True, "sl"
+
+        if hit:
+            ts = time.strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{ts}] {reason.upper()} hit @ {mid:.2f} -> closing {symbol}")
+            cmd = ["python", "scripts/hyperliquid_bot.py", "close", "--symbol", symbol]
+            p = subprocess.run(cmd, capture_output=True, text=True)
+            if p.returncode == 0:
+                print(p.stdout.strip())
+            else:
+                print((p.stderr or p.stdout).strip())
+            return True
+    except Exception as e:
+        print(f"tpsl-check-error: {e}")
+    return False
+
+
 def run_once():
+    # 1) 먼저 TP/SL 체크
+    maybe_close_on_tpsl()
+
+    # 2) 이미 포지션 있으면 신규진입 안 함
+    if has_open_position(SYMBOL):
+        ts = time.strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[{ts}] position-open -> skip entry")
+        return
+
+    # 3) 신호 있으면 신규진입
     ok, spread = spread_ok()
     ts = time.strftime("%Y-%m-%d %H:%M:%S")
     if not ok:
