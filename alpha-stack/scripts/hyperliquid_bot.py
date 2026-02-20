@@ -224,18 +224,48 @@ def place_market(symbol: str, side: str, usd_size: float, leverage: int, execute
     print(json.dumps(event, indent=2))
 
 
-def close_symbol(symbol: str) -> None:
-    _, exch, addr, _ = _setup()
-    res = exch.market_close(symbol)
-    event = {"type": "market_close", "symbol": symbol, "address": addr, "result": res, "ts": int(time.time())}
+def _position_size(info: Info, address: str, symbol: str) -> float:
+    us = info.user_state(address)
+    for p in us.get("assetPositions", []):
+        pos = p.get("position", {})
+        if pos.get("coin") == symbol:
+            return abs(float(pos.get("szi", 0) or 0))
+    return 0.0
+
+
+def close_symbol(symbol: str, retries: int = 3, wait_sec: float = 0.8) -> None:
+    info, exch, addr, _ = _setup()
+
+    attempts = []
+    final_size = _position_size(info, addr, symbol)
+    for i in range(1, retries + 1):
+        res = exch.market_close(symbol)
+        attempts.append({"attempt": i, "result": res, "ts": int(time.time())})
+        time.sleep(wait_sec)
+        final_size = _position_size(info, addr, symbol)
+        if final_size <= 0:
+            break
+
+    event = {
+        "type": "market_close",
+        "symbol": symbol,
+        "address": addr,
+        "attempts": attempts,
+        "final_open_size": final_size,
+        "forced_flat": final_size <= 0,
+        "ts": int(time.time()),
+    }
     _log(event)
-    if POS_PATH.exists():
+
+    # 로컬 포지션 파일은 실제 평탄화 확인 후에만 삭제
+    if final_size <= 0 and POS_PATH.exists():
         try:
             d = json.loads(POS_PATH.read_text())
             if d.get("symbol") == symbol:
                 POS_PATH.unlink(missing_ok=True)
         except Exception:
             pass
+
     print(json.dumps(event, indent=2))
 
 
@@ -254,6 +284,8 @@ def main() -> None:
 
     p_close = sub.add_parser("close", help="close symbol market")
     p_close.add_argument("--symbol", required=True)
+    p_close.add_argument("--retries", type=int, default=3)
+    p_close.add_argument("--wait", type=float, default=0.8, help="wait seconds between retries")
 
     args = ap.parse_args()
 
@@ -262,7 +294,7 @@ def main() -> None:
     elif args.cmd == "order":
         place_market(args.symbol, args.side, args.usd, args.leverage, args.execute)
     elif args.cmd == "close":
-        close_symbol(args.symbol)
+        close_symbol(args.symbol, retries=args.retries, wait_sec=args.wait)
 
 
 if __name__ == "__main__":

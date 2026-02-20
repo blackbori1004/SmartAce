@@ -19,6 +19,7 @@ LEVERAGE = int(os.getenv("HL_LIVE_LEVERAGE", "5"))  # 공격적 상향 기본 5x
 SYMBOL = os.getenv("HL_LIVE_SYMBOL", "BTC")
 ACCOUNT = os.getenv("HL_ACCOUNT_ADDRESS", "").strip()
 MAX_LOSS_STREAK = int(os.getenv("HL_MAX_LOSS_STREAK", "3"))
+BREAKEVEN_TRIGGER_PCT = float(os.getenv("HL_BREAKEVEN_TRIGGER_PCT", "0.6"))
 
 STATE_DIR = Path(__file__).resolve().parents[1] / "state"
 POS_PATH = STATE_DIR / "open_position.json"
@@ -186,6 +187,23 @@ def maybe_close_on_tpsl() -> bool:
         mid = current_mid(symbol)
         hit, reason = False, None
 
+        # 수익이 일정 구간 이상 나면 손절을 본절로 올려 이익 잠금
+        entry = float(pos["entry_px"])
+        if side == "buy":
+            be_trigger = entry * (1 + BREAKEVEN_TRIGGER_PCT / 100.0)
+            if mid >= be_trigger and sl < entry:
+                pos["sl_px"] = entry
+                POS_PATH.write_text(json.dumps(pos, indent=2))
+                sl = entry
+                print(f"[BE] long stop moved to breakeven @ {entry:.2f}")
+        else:
+            be_trigger = entry * (1 - BREAKEVEN_TRIGGER_PCT / 100.0)
+            if mid <= be_trigger and sl > entry:
+                pos["sl_px"] = entry
+                POS_PATH.write_text(json.dumps(pos, indent=2))
+                sl = entry
+                print(f"[BE] short stop moved to breakeven @ {entry:.2f}")
+
         if side == "buy":
             if mid >= tp:
                 hit, reason = True, "tp"
@@ -200,26 +218,43 @@ def maybe_close_on_tpsl() -> bool:
         if hit:
             ts = time.strftime("%Y-%m-%d %H:%M:%S")
             print(f"[{ts}] {reason.upper()} hit @ {mid:.2f} -> closing {symbol}")
-            cmd = ["python", "scripts/hyperliquid_bot.py", "close", "--symbol", symbol]
+            cmd = [
+                "python",
+                "scripts/hyperliquid_bot.py",
+                "close",
+                "--symbol",
+                symbol,
+                "--retries",
+                "5",
+                "--wait",
+                "1.0",
+            ]
             p = subprocess.run(cmd, capture_output=True, text=True)
             if p.returncode == 0:
                 print(p.stdout.strip())
-                pnl = (mid - float(pos["entry_px"])) * float(pos["size"]) * (1 if side == "buy" else -1)
-                log_trade({
-                    "kind": "closed",
-                    "symbol": symbol,
-                    "side": side,
-                    "entry": pos["entry_px"],
-                    "exit": mid,
-                    "size": pos["size"],
-                    "reason": reason,
-                    "pnl_usd": pnl,
-                    "ts": int(time.time()),
-                })
-                if pnl < 0 and loss_streak() >= MAX_LOSS_STREAK:
-                    KILL_SWITCH.parent.mkdir(parents=True, exist_ok=True)
-                    KILL_SWITCH.write_text(f"paused at {int(time.time())}: loss streak reached")
-                    print(f"[PAUSE] loss streak >= {MAX_LOSS_STREAK}, kill switch ON")
+                try:
+                    close_ev = json.loads(p.stdout)
+                except Exception:
+                    close_ev = {}
+                if close_ev.get("forced_flat"):
+                    pnl = (mid - float(pos["entry_px"])) * float(pos["size"]) * (1 if side == "buy" else -1)
+                    log_trade({
+                        "kind": "closed",
+                        "symbol": symbol,
+                        "side": side,
+                        "entry": pos["entry_px"],
+                        "exit": mid,
+                        "size": pos["size"],
+                        "reason": reason,
+                        "pnl_usd": pnl,
+                        "ts": int(time.time()),
+                    })
+                    if pnl < 0 and loss_streak() >= MAX_LOSS_STREAK:
+                        KILL_SWITCH.parent.mkdir(parents=True, exist_ok=True)
+                        KILL_SWITCH.write_text(f"paused at {int(time.time())}: loss streak reached")
+                        print(f"[PAUSE] loss streak >= {MAX_LOSS_STREAK}, kill switch ON")
+                else:
+                    print("[WARN] close attempted but position not fully flat yet")
             else:
                 print((p.stderr or p.stdout).strip())
             return True
