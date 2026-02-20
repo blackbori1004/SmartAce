@@ -48,18 +48,24 @@ python scripts/dex_quote_monitor.py --pair ETH/USDC --interval 8
 ## 5) 웹 대시보드 (추천)
 
 ```bash
+# 보안 토큰 지정 (강력 권장)
+export DASHBOARD_TOKEN="your-strong-token"
+# 페어 변경 가능 (기본: WETH/USDC)
+export DEX_PAIR="WETH/USDC"
 python scripts/dashboard.py
 ```
 
-브라우저에서 열기:
+브라우저에서 열기 (토큰 필수):
 
-- http://127.0.0.1:8788
+- Mac: `http://127.0.0.1:8788/?token=your-strong-token`
+- Phone(같은 Wi-Fi): `http://<맥의로컬IP>:8788/?token=your-strong-token`
 
 표시 항목:
 
 - ETH RPC 연결/블록 높이
-- DEX 스프레드(ETH/USDC)
+- DEX 스프레드
 - Polymarket WS 연결 상태/메시지 카운트
+- Paper Trading 시뮬레이션(PnL/승률/거래수)
 
 ## 6) 다음 단계 (내가 같이 붙어서 진행)
 
