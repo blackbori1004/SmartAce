@@ -12,7 +12,7 @@ import requests
 from dotenv import load_dotenv
 from py_clob_client.client import ClobClient
 from py_clob_client.clob_types import ApiCreds, MarketOrderArgs, OrderType
-from py_clob_client.order_builder.constants import BUY
+from py_clob_client.order_builder.constants import BUY, SELL
 
 ROOT = Path(__file__).resolve().parents[1]
 STATE_DIR = ROOT / "state"
@@ -33,8 +33,11 @@ def _looks_base64(s: str) -> bool:
 
 def load_state() -> Dict:
     if STATE_PATH.exists():
-        return json.loads(STATE_PATH.read_text())
-    return {"seen": {}}
+        st = json.loads(STATE_PATH.read_text())
+        st.setdefault("seen", {})
+        st.setdefault("positions", {})
+        return st
+    return {"seen": {}, "positions": {}}
 
 
 def save_state(st: Dict) -> None:
@@ -87,6 +90,70 @@ def trade_key(t: Dict) -> str:
     )
 
 
+def maybe_close_positions(
+    client: ClobClient,
+    positions: Dict[str, Dict],
+    tp_pct: float,
+    sl_pct: float,
+    max_hold_minutes: int,
+) -> int:
+    now = int(time.time())
+    closed = 0
+
+    for asset, p in list(positions.items()):
+        try:
+            qty = float(p.get("qty", 0) or 0)
+            entry = float(p.get("entry_price", 0) or 0)
+            opened_ts = int(p.get("opened_ts", now) or now)
+            if qty <= 0 or entry <= 0:
+                continue
+
+            last_px = float(client.get_last_trade_price(asset) or 0)
+            if last_px <= 0:
+                continue
+
+            tp_px = entry * (1 + tp_pct / 100.0)
+            sl_px = entry * (1 - sl_pct / 100.0)
+            timed_out = max_hold_minutes > 0 and opened_ts < now - max_hold_minutes * 60
+
+            reason = None
+            if last_px >= tp_px:
+                reason = "tp"
+            elif last_px <= sl_px:
+                reason = "sl"
+            elif timed_out:
+                reason = "time"
+
+            if not reason:
+                continue
+
+            mo = MarketOrderArgs(token_id=asset, amount=qty, side=SELL)
+            signed = client.create_market_order(mo)
+            res = client.post_order(signed, OrderType.FOK)
+
+            evt = {
+                "mode": "CLOSE",
+                "asset": asset,
+                "slug": p.get("slug"),
+                "title": p.get("title"),
+                "reason": reason,
+                "entry_price": entry,
+                "last_price": last_px,
+                "qty": qty,
+                "opened_ts": opened_ts,
+                "closed_ts": now,
+                "result": res,
+                "ts": now,
+            }
+            log_event(evt)
+            positions.pop(asset, None)
+            closed += 1
+        except Exception as e:
+            log_event({"mode": "CLOSE_ERROR", "asset": asset, "error": str(e), "ts": int(time.time())})
+
+    return closed
+
+
 def run_once(
     whales: List[str],
     usd_scale: float,
@@ -96,10 +163,18 @@ def run_once(
     max_actions: int,
     max_total_usd: float,
     max_age_minutes: int,
+    tp_pct: float,
+    sl_pct: float,
+    max_hold_minutes: int,
 ) -> None:
     st = load_state()
     seen = st.get("seen", {})
+    positions = st.get("positions", {})
     client = build_client() if execute else None
+
+    closed_count = 0
+    if execute and client:
+        closed_count = maybe_close_positions(client, positions, tp_pct=tp_pct, sl_pct=sl_pct, max_hold_minutes=max_hold_minutes)
 
     now = int(time.time())
     candidates = []
@@ -186,6 +261,34 @@ def run_once(
             res = client.post_order(signed, OrderType.FOK)
             plan["result"] = res
             plan["mode"] = "EXECUTE"
+
+            if (res or {}).get("status") == "matched":
+                qty = float(res.get("takingAmount") or 0)
+                cost = float(res.get("makingAmount") or my_usd)
+                if qty > 0:
+                    entry = cost / qty
+                    old = positions.get(c["asset"])
+                    if old:
+                        old_qty = float(old.get("qty", 0) or 0)
+                        old_entry = float(old.get("entry_price", 0) or 0)
+                        new_qty = old_qty + qty
+                        new_entry = ((old_qty * old_entry) + (qty * entry)) / new_qty if new_qty > 0 else entry
+                        positions[c["asset"]] = {
+                            **old,
+                            "qty": new_qty,
+                            "entry_price": new_entry,
+                            "updated_ts": int(time.time()),
+                        }
+                    else:
+                        positions[c["asset"]] = {
+                            "asset": c["asset"],
+                            "slug": c.get("slug"),
+                            "title": c.get("title"),
+                            "qty": qty,
+                            "entry_price": entry,
+                            "opened_ts": int(time.time()),
+                            "updated_ts": int(time.time()),
+                        }
         else:
             plan["mode"] = "DRY_RUN"
 
@@ -197,8 +300,20 @@ def run_once(
             break
 
     st["seen"] = seen
+    st["positions"] = positions
     save_state(st)
-    print(json.dumps({"ok": True, "actions": len(actions), "execute": execute, "total_usd": round(total_usd, 4)}, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "actions": len(actions),
+                "closed": closed_count,
+                "execute": execute,
+                "total_usd": round(total_usd, 4),
+            },
+            ensure_ascii=False,
+        )
+    )
     for a in actions[:10]:
         print(json.dumps(a, ensure_ascii=False))
 
@@ -215,6 +330,9 @@ def main() -> None:
     ap.add_argument("--max-actions", type=int, default=1, help="max copied trades per run")
     ap.add_argument("--max-total-usd", type=float, default=10.0, help="max total USD copied per run")
     ap.add_argument("--max-age-minutes", type=int, default=120, help="copy only recent whale trades (0=disable)")
+    ap.add_argument("--tp-pct", type=float, default=12.0, help="take-profit percent for copied position")
+    ap.add_argument("--sl-pct", type=float, default=8.0, help="stop-loss percent for copied position")
+    ap.add_argument("--max-hold-minutes", type=int, default=180, help="force close after hold time")
     args = ap.parse_args()
 
     whales = [x.strip() for x in args.whales.split(",") if x.strip()]
@@ -233,6 +351,9 @@ def main() -> None:
                     args.max_actions,
                     args.max_total_usd,
                     args.max_age_minutes,
+                    args.tp_pct,
+                    args.sl_pct,
+                    args.max_hold_minutes,
                 )
             except Exception as e:
                 print(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False))
@@ -247,6 +368,9 @@ def main() -> None:
             args.max_actions,
             args.max_total_usd,
             args.max_age_minutes,
+            args.tp_pct,
+            args.sl_pct,
+            args.max_hold_minutes,
         )
 
 
