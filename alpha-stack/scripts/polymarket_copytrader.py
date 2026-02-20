@@ -154,6 +154,57 @@ def maybe_close_positions(
     return closed
 
 
+def bootstrap_positions_from_log(positions: Dict[str, Dict]) -> Dict[str, Dict]:
+    if positions or not LOG_PATH.exists():
+        return positions
+
+    out = {}
+    for ln in LOG_PATH.read_text().strip().splitlines():
+        try:
+            x = json.loads(ln)
+        except Exception:
+            continue
+        m = x.get("mode")
+        if m == "EXECUTE":
+            res = x.get("result") or {}
+            if str(res.get("status")) != "matched":
+                continue
+            asset = str(x.get("asset") or "")
+            qty = float(res.get("takingAmount") or 0)
+            cost = float(res.get("makingAmount") or x.get("my_usd") or 0)
+            if not asset or qty <= 0:
+                continue
+            entry = cost / qty
+            old = out.get(asset)
+            if old:
+                oq = float(old.get("qty", 0))
+                oe = float(old.get("entry_price", 0))
+                nq = oq + qty
+                ne = ((oq * oe) + (qty * entry)) / nq if nq > 0 else entry
+                old["qty"] = nq
+                old["entry_price"] = ne
+                old["updated_ts"] = int(x.get("ts") or time.time())
+            else:
+                out[asset] = {
+                    "asset": asset,
+                    "slug": x.get("slug"),
+                    "title": x.get("title"),
+                    "qty": qty,
+                    "entry_price": entry,
+                    "opened_ts": int(x.get("ts") or time.time()),
+                    "updated_ts": int(x.get("ts") or time.time()),
+                }
+        elif m == "CLOSE":
+            asset = str(x.get("asset") or "")
+            qty = float(x.get("qty") or 0)
+            if asset in out:
+                out[asset]["qty"] = max(0.0, float(out[asset].get("qty", 0)) - qty)
+                if out[asset]["qty"] <= 0:
+                    out.pop(asset, None)
+
+    return out
+
+
 def run_once(
     whales: List[str],
     usd_scale: float,
@@ -169,7 +220,7 @@ def run_once(
 ) -> None:
     st = load_state()
     seen = st.get("seen", {})
-    positions = st.get("positions", {})
+    positions = bootstrap_positions_from_log(st.get("positions", {}))
     client = build_client() if execute else None
 
     closed_count = 0
