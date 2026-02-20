@@ -67,7 +67,36 @@ python scripts/dashboard.py
 - Polymarket WS 연결 상태/메시지 카운트
 - Paper Trading 시뮬레이션(PnL/승률/거래수)
 
-## 6) 다음 단계 (내가 같이 붙어서 진행)
+## 6) Hyperliquid API 실행 엔진 (브라우저 클릭 대체)
+
+```bash
+# 상태 확인 (spot/perp)
+python scripts/hyperliquid_bot.py status
+
+# 주문 드라이런 (실행 안 함)
+python scripts/hyperliquid_bot.py order --symbol BTC --side buy --usd 100 --leverage 2
+
+# 실주문 1회 실행
+python scripts/hyperliquid_bot.py order --symbol BTC --side buy --usd 100 --leverage 2 --execute
+```
+
+환경변수:
+
+- `HYPERLIQUID_PRIVATE_KEY` (필수)
+- `HL_ACCOUNT_ADDRESS` (선택: 다른 주소로 실행할 때)
+- `HL_MAX_NOTIONAL_USD` (기본 100)
+- `HL_MAX_DAILY_LOSS_PCT` (기본 3)
+- `HL_MAX_SLIPPAGE` (기본 0.003)
+
+Kill switch:
+
+```bash
+touch ~/.openclaw/workspace/.pi/hyperliquid.pause
+```
+
+(파일이 있으면 주문이 자동 차단됨)
+
+## 7) 다음 단계 (내가 같이 붙어서 진행)
 
 1. 알림 임계값 튜닝 (거짓신호 줄이기)
 2. CSV 로그 누적
