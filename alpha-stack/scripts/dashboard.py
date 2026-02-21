@@ -373,17 +373,23 @@ def load_polymarket_copy_stats(limit: int = 20) -> Dict[str, Any]:
     wr = (wins / len(closed) * 100.0) if closed else 0.0
 
     positions = []
+    resolved_closed = 0
+    resolved_wins = 0
     # 1) 우선 state 파일의 실시간 포지션 사용
     if POLY_COPY_STATE_PATH.exists():
         try:
             st = json.loads(POLY_COPY_STATE_PATH.read_text())
             for asset, p in (st.get("positions") or {}).items():
+                qty = float(p.get("qty", 0) or 0)
+                if qty <= 0:
+                    continue
                 positions.append(
                     {
                         "asset": asset,
+                        "slug": p.get("slug"),
                         "title": p.get("title") or p.get("slug") or asset[:10],
                         "side": "LONG",
-                        "qty": float(p.get("qty", 0) or 0),
+                        "qty": qty,
                         "entry": float(p.get("entry_price", 0) or 0),
                         "leverage": 1,
                         "pnl": None,
@@ -409,6 +415,7 @@ def load_polymarket_copy_stats(limit: int = 20) -> Dict[str, Any]:
                 if asset not in agg:
                     agg[asset] = {
                         "asset": asset,
+                        "slug": x.get("slug"),
                         "title": x.get("title") or x.get("slug") or asset[:10],
                         "qty": 0.0,
                         "cost": 0.0,
@@ -428,6 +435,7 @@ def load_polymarket_copy_stats(limit: int = 20) -> Dict[str, Any]:
             positions.append(
                 {
                     "asset": asset,
+                    "slug": a.get("slug"),
                     "title": a["title"],
                     "side": "LONG",
                     "qty": a["qty"],
@@ -447,6 +455,7 @@ def load_polymarket_copy_stats(limit: int = 20) -> Dict[str, Any]:
 
             # 포지션 평가금액/미실현 PnL 계산
             pos_value = 0.0
+            active_positions = []
             for p in positions:
                 qty = float(p.get("qty", 0) or 0)
                 entry = float(p.get("entry", 0) or 0)
@@ -460,23 +469,39 @@ def load_polymarket_copy_stats(limit: int = 20) -> Dict[str, Any]:
 
                 if mark_px > 0:
                     p["pnl"] = (mark_px - entry) * qty
+
+                    # 이진시장 특성상 가격이 0 또는 1 근처면 사실상 종료된 포지션으로 간주
+                    if mark_px >= 0.98 or mark_px <= 0.02:
+                        resolved_closed += 1
+                        if p["pnl"] > 0:
+                            resolved_wins += 1
+                        cum_pnl_usd += p["pnl"]
+                        continue
+
                     pos_value += mark_px * qty
                 else:
                     # 시세 조회 실패 시 entry 기준 보수 추정
                     p["pnl"] = 0.0
                     pos_value += entry * qty
 
+                active_positions.append(p)
+
+            positions = active_positions
             wallet_total = collateral_usdc + pos_value
         except Exception:
             wallet_total = None
+
+    closed_total = len(closed) + resolved_closed
+    wins_total = wins + resolved_wins
+    wr_total = (wins_total / closed_total * 100.0) if closed_total else 0.0
 
     return {
         "total": len(rows),
         "executed": len(executed),
         "dryRuns": len(dry),
-        "closed": len(closed),
-        "wins": wins,
-        "winRate": wr,
+        "closed": closed_total,
+        "wins": wins_total,
+        "winRate": wr_total,
         "cumPnlUsd": cum_pnl_usd,
         "execUsd": total_exec_usd,
         "walletTotal": wallet_total,
