@@ -11,7 +11,7 @@ from typing import Dict, List
 import requests
 from dotenv import load_dotenv
 from py_clob_client.client import ClobClient
-from py_clob_client.clob_types import ApiCreds, MarketOrderArgs, OrderType
+from py_clob_client.clob_types import ApiCreds, BalanceAllowanceParams, AssetType, MarketOrderArgs, OrderType
 from py_clob_client.order_builder.constants import BUY, SELL
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -90,6 +90,42 @@ def trade_key(t: Dict) -> str:
     )
 
 
+def _to_price(x) -> float:
+    if isinstance(x, (int, float)):
+        return float(x)
+    if isinstance(x, str):
+        try:
+            return float(x)
+        except Exception:
+            return 0.0
+    if isinstance(x, dict):
+        for k in ("price", "last", "last_price", "value"):
+            if k in x:
+                try:
+                    return float(x[k])
+                except Exception:
+                    pass
+    return 0.0
+
+
+def _onchain_qty(client: ClobClient, asset: str, hint_qty: float = 0.0) -> float:
+    try:
+        sig_type = int(os.getenv("POLYMARKET_SIGNATURE_TYPE", "2").strip())
+        b = client.get_balance_allowance(
+            BalanceAllowanceParams(asset_type=AssetType.CONDITIONAL, token_id=asset, signature_type=sig_type)
+        )
+        raw = float(b.get("balance", 0) or 0)
+        if raw <= 0:
+            return 0.0
+
+        q1 = raw / 1_000.0
+        q2 = raw / 1_000_000.0
+        # 보수적으로 작은 쪽 선택 (과대 수량으로 close 실패 방지)
+        return min(q1, q2)
+    except Exception:
+        return 0.0
+
+
 def maybe_close_positions(
     client: ClobClient,
     positions: Dict[str, Dict],
@@ -102,13 +138,20 @@ def maybe_close_positions(
 
     for asset, p in list(positions.items()):
         try:
-            qty = float(p.get("qty", 0) or 0)
+            qty_state = float(p.get("qty", 0) or 0)
+            qty_chain = _onchain_qty(client, asset, hint_qty=qty_state)
+            qty = min(qty_state if qty_state > 0 else qty_chain, qty_chain) if qty_chain > 0 else qty_state
             entry = float(p.get("entry_price", 0) or 0)
             opened_ts = int(p.get("opened_ts", now) or now)
+
+            # 이미 온체인 잔고가 0이면 state에서 제거
+            if qty_chain <= 0:
+                positions.pop(asset, None)
+                continue
             if qty <= 0 or entry <= 0:
                 continue
 
-            last_px = float(client.get_last_trade_price(asset) or 0)
+            last_px = _to_price(client.get_last_trade_price(asset))
             if last_px <= 0:
                 continue
 
@@ -127,9 +170,28 @@ def maybe_close_positions(
             if not reason:
                 continue
 
-            mo = MarketOrderArgs(token_id=asset, amount=qty, side=SELL)
-            signed = client.create_market_order(mo)
-            res = client.post_order(signed, OrderType.FOK)
+            res = None
+            close_qty = qty
+            last_err = None
+            for mul in (1.0, 0.7, 0.5, 0.3, 0.1, 0.05):
+                try_qty = max(0.001, round(qty * mul, 6))
+                try:
+                    mo = MarketOrderArgs(token_id=asset, amount=try_qty, side=SELL)
+                    signed = client.create_market_order(mo)
+                    res = client.post_order(signed, OrderType.FOK)
+                    close_qty = try_qty
+                    last_err = None
+                    break
+                except Exception as e:
+                    last_err = str(e)
+                    if "No orderbook exists" in last_err:
+                        # 이미 종결/비활성 시장으로 간주
+                        close_qty = 0.0
+                        res = {"status": "resolved_no_orderbook", "error": last_err}
+                        break
+                    continue
+            if res is None:
+                raise RuntimeError(last_err or "close failed")
 
             evt = {
                 "mode": "CLOSE",
@@ -139,19 +201,40 @@ def maybe_close_positions(
                 "reason": reason,
                 "entry_price": entry,
                 "last_price": last_px,
-                "qty": qty,
+                "qty": close_qty,
                 "opened_ts": opened_ts,
                 "closed_ts": now,
                 "result": res,
                 "ts": now,
             }
             log_event(evt)
-            positions.pop(asset, None)
+
+            # close 후 실제 잔고 재조회로 state 동기화
+            left = _onchain_qty(client, asset, hint_qty=max(0.0, qty - close_qty))
+            if left <= 0:
+                positions.pop(asset, None)
+            else:
+                positions[asset] = {
+                    **p,
+                    "qty": left,
+                    "updated_ts": now,
+                }
             closed += 1
         except Exception as e:
             log_event({"mode": "CLOSE_ERROR", "asset": asset, "error": str(e), "ts": int(time.time())})
 
     return closed
+
+
+def sync_positions_to_chain(client: ClobClient, positions: Dict[str, Dict]) -> Dict[str, Dict]:
+    out: Dict[str, Dict] = {}
+    now = int(time.time())
+    for asset, p in (positions or {}).items():
+        q = _onchain_qty(client, asset)
+        if q <= 0:
+            continue
+        out[asset] = {**p, "qty": q, "updated_ts": now}
+    return out
 
 
 def bootstrap_positions_from_log(positions: Dict[str, Dict]) -> Dict[str, Dict]:
@@ -225,6 +308,7 @@ def run_once(
 
     closed_count = 0
     if execute and client:
+        positions = sync_positions_to_chain(client, positions)
         closed_count = maybe_close_positions(client, positions, tp_pct=tp_pct, sl_pct=sl_pct, max_hold_minutes=max_hold_minutes)
 
     now = int(time.time())
@@ -349,6 +433,9 @@ def run_once(
 
         if len(actions) >= max_actions:
             break
+
+    if execute and client:
+        positions = sync_positions_to_chain(client, positions)
 
     st["seen"] = seen
     st["positions"] = positions

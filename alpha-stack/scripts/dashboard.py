@@ -453,8 +453,9 @@ def load_polymarket_copy_stats(limit: int = 20) -> Dict[str, Any]:
                         BalanceAllowanceParams(asset_type=AssetType.CONDITIONAL, token_id=asset, signature_type=sig_type)
                     )
                     raw_bal = float(br.get("balance", 0) or 0)
-                    # Conditional token units can vary; use this only as existence check to remove stale closed rows.
                     a["_has_balance"] = raw_bal > 0
+                    if raw_bal > 0:
+                        a["_qty_chain_est"] = min(raw_bal / 1_000.0, raw_bal / 1_000_000.0)
                 except Exception:
                     pass
         except Exception:
@@ -465,6 +466,9 @@ def load_polymarket_copy_stats(limit: int = 20) -> Dict[str, Any]:
         if a.get("_has_balance") is False:
             continue
         qty = float(a.get("qty", 0) or 0)
+        qty_chain_est = float(a.get("_qty_chain_est", 0) or 0)
+        if qty_chain_est > 0:
+            qty = min(qty, qty_chain_est)
         if qty <= 1e-9:
             continue
 
@@ -501,7 +505,13 @@ def load_polymarket_copy_stats(limit: int = 20) -> Dict[str, Any]:
             cum_pnl_usd += pnl
             continue
 
-        pnl = ((mark_px if mark_px > 0 else entry) - entry) * qty
+        eff_px = (mark_px if mark_px > 0 else entry)
+        if qty < 0.05:
+            continue  # dust position hide
+        if mark_px > 0 and (mark_px * qty) < 1.0:
+            continue  # dust position hide
+
+        pnl = (eff_px - entry) * qty
         positions.append(
             {
                 "asset": asset,
