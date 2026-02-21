@@ -42,6 +42,7 @@ TRADES_PATH = Path(__file__).resolve().parents[1] / "state" / "trades.jsonl"
 POLY_COPY_LOG_PATH = Path(__file__).resolve().parents[1] / "state" / "polymarket_copy_log.jsonl"
 POLY_COPY_STATE_PATH = Path(__file__).resolve().parents[1] / "state" / "polymarket_copy_state.json"
 POLY_ENV_PATH = Path(__file__).resolve().parents[1] / ".env.polymarket"
+_POLY_MARKET_CACHE: Dict[str, Any] = {}
 
 state: Dict[str, Any] = {
     "ws_connected": False,
@@ -344,6 +345,29 @@ def _polymarket_client():
         return None
 
 
+def _fetch_polymarket_market(slug: str) -> Dict[str, Any]:
+    if not slug:
+        return {}
+    now = time.time()
+    cached = _POLY_MARKET_CACHE.get(slug)
+    if cached and (now - float(cached.get("ts", 0))) < 120:
+        return cached.get("data", {})
+    try:
+        r = requests.get(
+            "https://gamma-api.polymarket.com/markets",
+            params={"slug": slug},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=8,
+        )
+        r.raise_for_status()
+        arr = r.json()
+        data = arr[0] if isinstance(arr, list) and arr else {}
+        _POLY_MARKET_CACHE[slug] = {"ts": now, "data": data}
+        return data
+    except Exception:
+        return {}
+
+
 def load_polymarket_copy_stats(limit: int = 20) -> Dict[str, Any]:
     rows = []
     if POLY_COPY_LOG_PATH.exists():
@@ -356,12 +380,50 @@ def load_polymarket_copy_stats(limit: int = 20) -> Dict[str, Any]:
     recent = rows[-limit:][::-1]
     executed = [x for x in rows if x.get("mode") == "EXECUTE"]
     dry = [x for x in rows if x.get("mode") == "DRY_RUN"]
-    closed = [x for x in rows if x.get("mode") == "CLOSE"]
+    explicit_closed = [x for x in rows if x.get("mode") == "CLOSE"]
     total_exec_usd = sum(float(x.get("my_usd", 0) or 0) for x in executed)
+
+    # Build net positions from logs (cost basis included)
+    agg = {}
+    for x in rows:
+        m = x.get("mode")
+        if m == "EXECUTE":
+            res = x.get("result") or {}
+            if str(res.get("status")) != "matched":
+                continue
+            asset = str(x.get("asset") or "")
+            qty = float(res.get("takingAmount") or 0)
+            cost = float(res.get("makingAmount") or x.get("my_usd") or 0)
+            if not asset or qty <= 0:
+                continue
+            a = agg.setdefault(
+                asset,
+                {
+                    "asset": asset,
+                    "slug": x.get("slug"),
+                    "title": x.get("title") or x.get("slug") or asset[:10],
+                    "qty": 0.0,
+                    "cost": 0.0,
+                },
+            )
+            if x.get("slug") and not a.get("slug"):
+                a["slug"] = x.get("slug")
+            a["qty"] += qty
+            a["cost"] += cost
+        elif m == "CLOSE":
+            asset = str(x.get("asset") or "")
+            qty = float(x.get("qty") or 0)
+            if asset in agg:
+                a = agg[asset]
+                open_qty = float(a.get("qty", 0) or 0)
+                if open_qty > 0 and qty > 0:
+                    ratio = min(1.0, qty / open_qty)
+                    a["cost"] = max(0.0, float(a.get("cost", 0) or 0) * (1.0 - ratio))
+                a["qty"] = max(0.0, open_qty - qty)
 
     wins = 0
     cum_pnl_usd = 0.0
-    for c in closed:
+    for c in explicit_closed:
         entry = float(c.get("entry_price", 0) or 0)
         last = float(c.get("last_price", 0) or 0)
         qty = float(c.get("qty", 0) or 0)
@@ -370,128 +432,94 @@ def load_polymarket_copy_stats(limit: int = 20) -> Dict[str, Any]:
             wins += 1
         cum_pnl_usd += pnl
 
-    wr = (wins / len(closed) * 100.0) if closed else 0.0
-
     positions = []
     resolved_closed = 0
     resolved_wins = 0
-    # 1) 우선 state 파일의 실시간 포지션 사용
-    if POLY_COPY_STATE_PATH.exists():
-        try:
-            st = json.loads(POLY_COPY_STATE_PATH.read_text())
-            for asset, p in (st.get("positions") or {}).items():
-                qty = float(p.get("qty", 0) or 0)
-                if qty <= 0:
-                    continue
-                positions.append(
-                    {
-                        "asset": asset,
-                        "slug": p.get("slug"),
-                        "title": p.get("title") or p.get("slug") or asset[:10],
-                        "side": "LONG",
-                        "qty": qty,
-                        "entry": float(p.get("entry_price", 0) or 0),
-                        "leverage": 1,
-                        "pnl": None,
-                    }
-                )
-        except Exception:
-            pass
-
-    # 2) state가 비었으면 로그 기반으로 복원 (이전 버전 호환)
-    if not positions:
-        agg = {}
-        for x in rows:
-            m = x.get("mode")
-            if m == "EXECUTE":
-                res = x.get("result") or {}
-                if str(res.get("status")) != "matched":
-                    continue
-                asset = str(x.get("asset") or "")
-                qty = float(res.get("takingAmount") or 0)
-                cost = float(res.get("makingAmount") or x.get("my_usd") or 0)
-                if not asset or qty <= 0:
-                    continue
-                if asset not in agg:
-                    agg[asset] = {
-                        "asset": asset,
-                        "slug": x.get("slug"),
-                        "title": x.get("title") or x.get("slug") or asset[:10],
-                        "qty": 0.0,
-                        "cost": 0.0,
-                    }
-                agg[asset]["qty"] += qty
-                agg[asset]["cost"] += cost
-            elif m == "CLOSE":
-                asset = str(x.get("asset") or "")
-                qty = float(x.get("qty") or 0)
-                if asset in agg:
-                    agg[asset]["qty"] = max(0.0, agg[asset]["qty"] - qty)
-
-        for asset, a in agg.items():
-            if a["qty"] <= 0:
-                continue
-            entry = a["cost"] / a["qty"] if a["qty"] > 0 else 0
-            positions.append(
-                {
-                    "asset": asset,
-                    "slug": a.get("slug"),
-                    "title": a["title"],
-                    "side": "LONG",
-                    "qty": a["qty"],
-                    "entry": entry,
-                    "leverage": 1,
-                    "pnl": None,
-                }
-            )
 
     wallet_total = None
     c = _polymarket_client()
+    collateral_usdc = None
+
+    # Use real on-chain token balances to avoid stale state positions
     if c is not None:
         try:
             sig_type = int(os.getenv("POLYMARKET_SIGNATURE_TYPE", "2"))
             bal = c.get_balance_allowance(BalanceAllowanceParams(asset_type=AssetType.COLLATERAL, signature_type=sig_type))
             collateral_usdc = float(bal.get("balance", 0) or 0) / 1_000_000.0
 
-            # 포지션 평가금액/미실현 PnL 계산
-            pos_value = 0.0
-            active_positions = []
-            for p in positions:
-                qty = float(p.get("qty", 0) or 0)
-                entry = float(p.get("entry", 0) or 0)
-                if qty <= 0:
-                    continue
-                mark_px = 0.0
+            for asset, a in agg.items():
                 try:
-                    mark_px = float(c.get_last_trade_price(p["asset"]) or 0)
+                    br = c.get_balance_allowance(
+                        BalanceAllowanceParams(asset_type=AssetType.CONDITIONAL, token_id=asset, signature_type=sig_type)
+                    )
+                    raw_bal = float(br.get("balance", 0) or 0)
+                    # Conditional token units can vary; use this only as existence check to remove stale closed rows.
+                    a["_has_balance"] = raw_bal > 0
                 except Exception:
-                    mark_px = 0.0
-
-                if mark_px > 0:
-                    p["pnl"] = (mark_px - entry) * qty
-
-                    # 이진시장 특성상 가격이 0 또는 1 근처면 사실상 종료된 포지션으로 간주
-                    if mark_px >= 0.98 or mark_px <= 0.02:
-                        resolved_closed += 1
-                        if p["pnl"] > 0:
-                            resolved_wins += 1
-                        cum_pnl_usd += p["pnl"]
-                        continue
-
-                    pos_value += mark_px * qty
-                else:
-                    # 시세 조회 실패 시 entry 기준 보수 추정
-                    p["pnl"] = 0.0
-                    pos_value += entry * qty
-
-                active_positions.append(p)
-
-            positions = active_positions
-            wallet_total = collateral_usdc + pos_value
+                    pass
         except Exception:
-            wallet_total = None
+            collateral_usdc = None
 
-    closed_total = len(closed) + resolved_closed
+    pos_value = 0.0
+    for asset, a in agg.items():
+        if a.get("_has_balance") is False:
+            continue
+        qty = float(a.get("qty", 0) or 0)
+        if qty <= 1e-9:
+            continue
+
+        slug = a.get("slug")
+        title = a.get("title")
+        entry = (float(a.get("cost", 0) or 0) / qty) if qty > 0 else 0.0
+        market = _fetch_polymarket_market(slug) if slug else {}
+
+        is_closed = bool(market.get("closed")) if market else False
+        mark_px = 0.0
+
+        if market:
+            try:
+                token_ids = market.get("clobTokenIds") or []
+                prices = [float(x) for x in (market.get("outcomePrices") or [])]
+                if asset in token_ids:
+                    idx = token_ids.index(asset)
+                    if idx < len(prices):
+                        mark_px = prices[idx]
+            except Exception:
+                mark_px = 0.0
+
+        if mark_px <= 0 and c is not None:
+            try:
+                mark_px = float(c.get_last_trade_price(asset) or 0)
+            except Exception:
+                mark_px = 0.0
+
+        if is_closed:
+            pnl = ((mark_px if mark_px > 0 else entry) - entry) * qty
+            resolved_closed += 1
+            if pnl > 0:
+                resolved_wins += 1
+            cum_pnl_usd += pnl
+            continue
+
+        pnl = ((mark_px if mark_px > 0 else entry) - entry) * qty
+        positions.append(
+            {
+                "asset": asset,
+                "slug": slug,
+                "title": title or slug or asset[:10],
+                "side": "LONG",
+                "qty": qty,
+                "entry": entry,
+                "leverage": 1,
+                "pnl": pnl,
+            }
+        )
+        pos_value += (mark_px if mark_px > 0 else entry) * qty
+
+    if collateral_usdc is not None:
+        wallet_total = collateral_usdc + pos_value
+
+    closed_total = len(explicit_closed) + resolved_closed
     wins_total = wins + resolved_wins
     wr_total = (wins_total / closed_total * 100.0) if closed_total else 0.0
 
