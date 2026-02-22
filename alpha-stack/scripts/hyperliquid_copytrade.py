@@ -20,6 +20,7 @@ LOOKBACK_SEC = int(os.getenv("HL_COPY_LOOKBACK_SEC", "20"))
 SCALE = float(os.getenv("HL_COPY_SCALE", "0.0015"))
 MAX_USD = float(os.getenv("HL_MAX_NOTIONAL_USD", "500"))
 MIN_USD = float(os.getenv("HL_COPY_MIN_USD", "10"))
+PER_TRADE_CAP_USD = float(os.getenv("HL_COPY_PER_TRADE_CAP_USD", "15"))
 DEFAULT_LEV = int(os.getenv("HL_COPY_DEFAULT_LEVERAGE", "3"))
 DUP_COOLDOWN_SEC = int(os.getenv("HL_COPY_DUPLICATE_COOLDOWN_SEC", "45"))
 DRY_RUN = os.getenv("HL_COPY_DRY_RUN", "0") == "1"
@@ -104,7 +105,7 @@ def main():
     info = Info(constants.MAINNET_API_URL, skip_ws=True)
     st = load_state()
     log(
-        f"copytrader started whales={len(WHALES)} scale={SCALE} max_usd={MAX_USD} min_usd={MIN_USD} dry={DRY_RUN} dupCooldown={DUP_COOLDOWN_SEC}s"
+        f"copytrader started whales={len(WHALES)} scale={SCALE} max_usd={MAX_USD} min_usd={MIN_USD} per_trade_cap={PER_TRADE_CAP_USD} dry={DRY_RUN} dupCooldown={DUP_COOLDOWN_SEC}s"
     )
 
     while True:
@@ -157,7 +158,7 @@ def main():
                     whale_notional = px * sz
                     w = whale_weight(whale)
                     usd = max(MIN_USD, whale_notional * SCALE * w)
-                    usd = min(usd, MAX_USD)
+                    usd = min(usd, PER_TRADE_CAP_USD, MAX_USD)
                     lev = whale_leverage(info, whale, coin)
                     k = _symbol_side_key(coin, side)
 
