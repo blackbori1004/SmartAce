@@ -1,0 +1,13 @@
+{
+  "name": "risk_guard_check",
+  "description": "Analyze a proposed trade plan and return risk guardrails: max position sizing, stop-loss/take-profit bands, and kill-switch triggers.",
+  "jobFee": 3,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "market": "string",
+    "entry": "number",
+    "leverage": "number",
+    "max_loss_pct": "number"
+  }
+}
