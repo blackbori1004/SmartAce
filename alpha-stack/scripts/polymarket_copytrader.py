@@ -19,6 +19,7 @@ STATE_DIR = ROOT / "state"
 STATE_DIR.mkdir(parents=True, exist_ok=True)
 STATE_PATH = STATE_DIR / "polymarket_copy_state.json"
 LOG_PATH = STATE_DIR / "polymarket_copy_log.jsonl"
+WEIGHTS_PATH = STATE_DIR / "polymarket_whale_weights.json"
 ENV_PATH = ROOT / ".env.polymarket"
 DATA_API = "https://data-api.polymarket.com/trades"
 
@@ -76,6 +77,23 @@ def build_client() -> ClobClient:
     else:
         client.set_api_creds(client.create_or_derive_api_creds())
     return client
+
+
+def load_whale_weights() -> Dict[str, float]:
+    if WEIGHTS_PATH.exists():
+        try:
+            d = json.loads(WEIGHTS_PATH.read_text())
+            ws = d.get("weights") or {}
+            out = {}
+            for k, v in ws.items():
+                try:
+                    out[k.lower()] = float(v)
+                except Exception:
+                    continue
+            return out
+        except Exception:
+            return {}
+    return {}
 
 
 def trade_key(t: Dict) -> str:
@@ -312,6 +330,7 @@ def run_once(
         closed_count = maybe_close_positions(client, positions, tp_pct=tp_pct, sl_pct=sl_pct, max_hold_minutes=max_hold_minutes)
 
     now = int(time.time())
+    whale_weights = load_whale_weights()
     candidates = []
     consensus: Dict[str, set] = {}
 
@@ -358,11 +377,14 @@ def run_once(
         whale_count = len(consensus.get(c["asset"], set()))
         consensus_weight = min(2.2, 1.0 + 0.40 * (whale_count - 1))
         prob_weight = min(1.6, max(0.7, 0.6 + 0.8 * c["price"]))
-        weighted_usd = min(usd_cap, base_usd * consensus_weight * prob_weight)
+        whale_weight = float(whale_weights.get(str(c["whale"]).lower(), 1.0))
+        whale_weight = min(1.8, max(0.6, whale_weight))
+        weighted_usd = min(usd_cap, base_usd * consensus_weight * prob_weight * whale_weight)
 
         c["whale_count"] = whale_count
         c["consensus_weight"] = round(consensus_weight, 3)
         c["prob_weight"] = round(prob_weight, 3)
+        c["whale_weight"] = round(whale_weight, 3)
         c["my_usd"] = round(weighted_usd, 4)
 
     # 강한 합의/가중치 순으로 실행
@@ -387,6 +409,7 @@ def run_once(
             "whale_count": c["whale_count"],
             "consensus_weight": c["consensus_weight"],
             "prob_weight": c["prob_weight"],
+            "whale_weight": c.get("whale_weight", 1.0),
             "ts": int(time.time()),
         }
 

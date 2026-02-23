@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 STATE_DIR = ROOT / "state"
 LOG_PATH = STATE_DIR / "polymarket_copy_log.jsonl"
 ACTIVE_PATH = STATE_DIR / "polymarket_whales_active.json"
+WEIGHTS_PATH = STATE_DIR / "polymarket_whale_weights.json"
 REBAL_LOG = STATE_DIR / "polymarket_rebalance.log"
 
 DEFAULT_WHALES = [
@@ -98,6 +99,34 @@ def fetch_candidate_wallets(limit=30):
     return [w for _, w in rows[:limit]]
 
 
+def build_hourly_weights(current_whales):
+    rows = load_recent_exec(1)
+    # weight from 1h quality avg: (consensus_weight * prob_weight)
+    qmap = {w: [] for w in current_whales}
+    for x in rows:
+        w = (x.get("whale") or "").lower()
+        if w not in qmap:
+            continue
+        q = float(x.get("consensus_weight") or 0) * float(x.get("prob_weight") or 0)
+        if q > 0:
+            qmap[w].append(q)
+
+    raw = {}
+    for w in current_whales:
+        vals = qmap.get(w) or []
+        avg = (sum(vals) / len(vals)) if vals else 1.0
+        # clamp and normalize around 1.0
+        raw[w] = min(1.6, max(0.7, avg))
+
+    mean = sum(raw.values()) / len(raw) if raw else 1.0
+    weights = {w: round(min(1.8, max(0.6, v / mean)), 3) for w, v in raw.items()} if mean > 0 else {w: 1.0 for w in raw}
+
+    WEIGHTS_PATH.write_text(
+        json.dumps({"updatedAt": int(time.time()), "weights": weights, "source": "1h_quality_avg"}, indent=2)
+    )
+    return weights
+
+
 def score_current_whales(current_whales):
     rows = load_recent_exec(24)
     # fallback score from copied activity if no PnL fields available
@@ -143,6 +172,9 @@ def main():
     low = scored[0] if scored else None
     replacement = next((w for w in candidates if w not in current), None)
 
+    # refresh hourly dynamic whale weights (used by copytrader sizing)
+    weights = build_hourly_weights(current)
+
     changed = False
     reason = "no_change"
     if low and replacement:
@@ -155,10 +187,11 @@ def main():
     if changed:
         pid = restart_copytrader(current)
         save_active(current, reason)
-        log(f"REBALANCED: {reason}; pid={pid}; whales={current}")
+        weights = build_hourly_weights(current)
+        log(f"REBALANCED: {reason}; pid={pid}; whales={current}; weights={weights}")
     else:
         save_active(current, reason)
-        log(f"KEEP: whales={current}; low={low}")
+        log(f"KEEP: whales={current}; low={low}; weights={weights}")
 
 
 if __name__ == "__main__":
