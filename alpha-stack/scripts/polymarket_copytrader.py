@@ -211,6 +211,37 @@ def maybe_close_positions(
             if res is None:
                 raise RuntimeError(last_err or "close failed")
 
+            # If market is resolved/no orderbook, remove from state immediately to avoid close spam.
+            if isinstance(res, dict) and str(res.get("status")) == "resolved_no_orderbook":
+                positions.pop(asset, None)
+                log_event({
+                    "mode": "CLOSE_RESOLVED",
+                    "asset": asset,
+                    "slug": p.get("slug"),
+                    "title": p.get("title"),
+                    "reason": reason,
+                    "closed_ts": now,
+                    "result": res,
+                    "ts": now,
+                })
+                closed += 1
+                continue
+
+            # do not count zero-qty close as trade outcome
+            if close_qty <= 0:
+                log_event({
+                    "mode": "CLOSE_SKIPPED",
+                    "asset": asset,
+                    "slug": p.get("slug"),
+                    "title": p.get("title"),
+                    "reason": reason,
+                    "closed_ts": now,
+                    "result": res,
+                    "ts": now,
+                })
+                positions.pop(asset, None)
+                continue
+
             evt = {
                 "mode": "CLOSE",
                 "asset": asset,
@@ -348,11 +379,20 @@ def run_once(
 
             side = (t.get("side") or "").upper()
             asset = str(t.get("asset") or "")
+            title = str(t.get("title") or "")
+            slug = str(t.get("slug") or "")
             price = float(t.get("price") or 0)
             size = float(t.get("size") or 0)
             whale_cash = price * size
 
             if not asset:
+                continue
+
+            # Skip ultra-short binary markets (very noisy / high churn)
+            t_low = title.lower()
+            s_low = slug.lower()
+            if "up or down" in t_low or "updown" in s_low:
+                seen[k] = now
                 continue
 
             if side == "SELL":
