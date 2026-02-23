@@ -333,6 +333,7 @@ def run_once(
     whale_weights = load_whale_weights()
     candidates = []
     consensus: Dict[str, set] = {}
+    whale_sell_ts: Dict[str, int] = {}
 
     for w in whales:
         trades = fetch_user_trades(w, limit=30)
@@ -346,14 +347,23 @@ def run_once(
                 continue
 
             side = (t.get("side") or "").upper()
-            if side != "BUY":
-                continue
-
             asset = str(t.get("asset") or "")
             price = float(t.get("price") or 0)
             size = float(t.get("size") or 0)
             whale_cash = price * size
-            if not asset or whale_cash < min_whale_cash:
+
+            if not asset:
+                continue
+
+            if side == "SELL":
+                whale_sell_ts[asset] = max(whale_sell_ts.get(asset, 0), ts_raw)
+                seen[k] = now
+                continue
+
+            if side != "BUY":
+                continue
+
+            if whale_cash < min_whale_cash:
                 continue
 
             seen[k] = now
@@ -368,6 +378,7 @@ def run_once(
                     "side": side,
                     "price": price,
                     "whale_cash": whale_cash,
+                    "whale_ts": ts_raw,
                 }
             )
 
@@ -390,6 +401,46 @@ def run_once(
     # 강한 합의/가중치 순으로 실행
     candidates.sort(key=lambda x: (x["whale_count"], x["my_usd"], x["whale_cash"]), reverse=True)
 
+    # Whale SELL signal -> try immediate close for same asset
+    if execute and client and whale_sell_ts:
+        for asset, sell_ts in whale_sell_ts.items():
+            p = positions.get(asset)
+            if not p:
+                continue
+            try:
+                qty_state = float(p.get("qty", 0) or 0)
+                qty_chain = _onchain_qty(client, asset, hint_qty=qty_state)
+                qty = min(qty_state if qty_state > 0 else qty_chain, qty_chain) if qty_chain > 0 else qty_state
+                if qty <= 0:
+                    positions.pop(asset, None)
+                    continue
+                mo = MarketOrderArgs(token_id=asset, amount=qty, side=SELL)
+                signed = client.create_market_order(mo)
+                res = client.post_order(signed, OrderType.FOK)
+                close_ts = int(time.time())
+                whale_ts_s = int(sell_ts / 1000) if int(sell_ts) > 10**12 else int(sell_ts)
+                sell_lag_sec = max(0, close_ts - whale_ts_s)
+                log_event({
+                    "mode": "CLOSE",
+                    "reason": "whale_sell",
+                    "asset": asset,
+                    "slug": p.get("slug"),
+                    "title": p.get("title"),
+                    "qty": qty,
+                    "whale_sell_ts": whale_ts_s,
+                    "sell_lag_sec": sell_lag_sec,
+                    "closed_ts": close_ts,
+                    "result": res,
+                    "ts": close_ts,
+                })
+                left = _onchain_qty(client, asset, hint_qty=0)
+                if left <= 0:
+                    positions.pop(asset, None)
+                else:
+                    positions[asset] = {**p, "qty": left, "updated_ts": close_ts}
+            except Exception as e:
+                log_event({"mode": "CLOSE_ERROR", "asset": asset, "reason": "whale_sell", "error": str(e), "ts": int(time.time())})
+
     actions = []
     total_usd = 0.0
     for c in candidates:
@@ -410,6 +461,7 @@ def run_once(
             "consensus_weight": c["consensus_weight"],
             "prob_weight": c["prob_weight"],
             "whale_weight": c.get("whale_weight", 1.0),
+            "whale_ts": c.get("whale_ts"),
             "ts": int(time.time()),
         }
 
