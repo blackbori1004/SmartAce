@@ -642,19 +642,13 @@ async function tick(){
   const d=await r.json();
   document.getElementById('updatedAt').innerText = new Date((d.ts||0)*1000).toLocaleString();
 
-  const hl = d.hl || {};
-  const ts = d.tradeStats || {closed:0,wins:0,winRate:0,cumPnl:0};
   const pc = d.polymarketCopy || {executed:0,closed:0,wins:0,winRate:0,cumPnlUsd:0,positions:[],walletTotal:null};
 
   const ch = [];
-  ch.push(`<tr><td>Hyperliquid</td><td>${ts.closed} (${ts.wins}/${Math.max(0,ts.closed-ts.wins)}/${fmtPct(ts.winRate)})</td><td class='${Number(ts.cumPnl)>=0?'ok':'bad'}'>${fmtUsd(ts.cumPnl)}</td><td>${hl.openPositions ?? '-'}</td><td>${fmtUsd(hl.walletTotal)}</td></tr>`);
   ch.push(`<tr><td>Polymarket</td><td>${pc.closed||0} (${pc.wins||0}/${Math.max(0,(pc.closed||0)-(pc.wins||0))}/${fmtPct(pc.winRate)})</td><td class='${Number(pc.cumPnlUsd)>=0?'ok':'bad'}'>${fmtUsd(pc.cumPnlUsd)}</td><td>${(pc.positions||[]).length}</td><td>${fmtUsd(pc.walletTotal)}</td></tr>`);
   document.getElementById('channelRows').innerHTML = ch.join('');
 
   const posRows=[];
-  (hl.positions||[]).forEach(p=>{
-    posRows.push(`<tr><td>Hyperliquid</td><td>${p.symbol||'-'}</td><td>${p.side||'-'}</td><td>${Number(p.size||0).toFixed(6)}</td><td>${p.leverage||'-'}x</td><td class='${Number(p.unrealizedPnl)>=0?'ok':'bad'}'>${fmtUsd(p.unrealizedPnl)}</td></tr>`);
-  });
   (pc.positions||[]).forEach(p=>{
     posRows.push(`<tr><td>Polymarket</td><td>${p.title||p.asset||'-'}</td><td>${p.side||'LONG'}</td><td>${Number(p.qty||0).toFixed(4)}</td><td>${p.leverage||1}x</td><td>${p.pnl===null?'-':fmtUsd(p.pnl)}</td></tr>`);
   });
@@ -664,7 +658,6 @@ async function tick(){
   const ops = `
     <div>RPC: <span class='${d.rpc?.ok?'ok':'bad'}'>${d.rpc?.ok?'정상':'오류'}</span> / DEX Pair: ${d.dexPair}</div>
     <div>Polymarket WS: <span class='${d.ws?.ws_connected?'ok':'bad'}'>${d.ws?.ws_connected?'연결됨':'끊김'}</span> (msg ${d.ws?.ws_messages||0})</div>
-    <div>Hyperliquid 주소: <span class='mono'>${hl.address||'-'}</span></div>
     <div>Polymarket 카피 실주문: ${pc.executed||0}건, 누적 집행 ${fmtUsd(pc.execUsd)}</div>
   `;
   document.getElementById('ops').innerHTML = ops;
@@ -685,9 +678,6 @@ def api_status():
             "dex": dex_spread(),
             "dexPair": DEX_PAIR,
             "ws": state,
-            "hl": hyperliquid_state(),
-            "history": load_history(),
-            "tradeStats": load_trade_stats(),
             "polymarketCopy": load_polymarket_copy_stats(),
             "paper": {
                 **paper,
