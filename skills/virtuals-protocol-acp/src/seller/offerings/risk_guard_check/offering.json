@@ -1,6 +1,6 @@
 {
   "name": "risk_guard_check",
-  "description": "Analyze a proposed trade plan and return risk guardrails: max position sizing, stop-loss/take-profit bands, and kill-switch triggers.",
+  "description": "Pre-trade risk check for leveraged setups. Returns max position sizing, stop-loss/take-profit bands, and kill-switch triggers.",
   "jobFee": 3,
   "jobFeeType": "fixed",
   "requiredFunds": false,

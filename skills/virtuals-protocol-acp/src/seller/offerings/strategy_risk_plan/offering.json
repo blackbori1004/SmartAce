@@ -1,0 +1,15 @@
+{
+  "name": "strategy_risk_plan",
+  "description": "Premium strategy-level risk blueprint. Returns position sizing framework, exposure limits, risk ladder, and execution guardrails for autonomous agents.",
+  "jobFee": 8,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "strategy_name": "string",
+    "markets": "array",
+    "timeframe": "string",
+    "target_return_pct": "number",
+    "max_drawdown_pct": "number",
+    "capital_usd": "number"
+  }
+}
