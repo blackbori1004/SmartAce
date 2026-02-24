@@ -364,7 +364,7 @@ def run_once(
     whale_weights = load_whale_weights()
     candidates = []
     consensus: Dict[str, set] = {}
-    whale_sell_ts: Dict[str, int] = {}
+    whale_sell_ts: Dict[str, Dict] = {}
 
     for w in whales:
         trades = fetch_user_trades(w, limit=30)
@@ -396,7 +396,17 @@ def run_once(
                 continue
 
             if side == "SELL":
-                whale_sell_ts[asset] = max(whale_sell_ts.get(asset, 0), ts_raw)
+                prev = whale_sell_ts.get(asset) or {}
+                prev_ts = int(prev.get("ts") or 0)
+                if ts_raw >= prev_ts:
+                    whale_sell_ts[asset] = {
+                        "ts": ts_raw,
+                        "whale": w,
+                        "size": size,
+                        "price": price,
+                        "title": title,
+                        "slug": slug,
+                    }
                 seen[k] = now
                 continue
 
@@ -443,7 +453,7 @@ def run_once(
 
     # Whale SELL signal -> try immediate close for same asset
     if execute and client and whale_sell_ts:
-        for asset, sell_ts in whale_sell_ts.items():
+        for asset, sell_evt in whale_sell_ts.items():
             p = positions.get(asset)
             if not p:
                 continue
@@ -458,8 +468,9 @@ def run_once(
                 signed = client.create_market_order(mo)
                 res = client.post_order(signed, OrderType.FOK)
                 close_ts = int(time.time())
-                whale_ts_s = int(sell_ts / 1000) if int(sell_ts) > 10**12 else int(sell_ts)
-                sell_lag_sec = max(0, close_ts - whale_ts_s)
+                sell_ts = int(sell_evt.get("ts") or 0)
+                whale_ts_s = int(sell_ts / 1000) if sell_ts > 10**12 else sell_ts
+                sell_lag_sec = max(0, close_ts - whale_ts_s) if whale_ts_s else None
                 log_event({
                     "mode": "CLOSE",
                     "reason": "whale_sell",
@@ -467,7 +478,10 @@ def run_once(
                     "slug": p.get("slug"),
                     "title": p.get("title"),
                     "qty": qty,
+                    "whale": sell_evt.get("whale"),
                     "whale_sell_ts": whale_ts_s,
+                    "whale_sell_price": sell_evt.get("price"),
+                    "whale_sell_size": sell_evt.get("size"),
                     "sell_lag_sec": sell_lag_sec,
                     "closed_ts": close_ts,
                     "result": res,
@@ -479,7 +493,7 @@ def run_once(
                 else:
                     positions[asset] = {**p, "qty": left, "updated_ts": close_ts}
             except Exception as e:
-                log_event({"mode": "CLOSE_ERROR", "asset": asset, "reason": "whale_sell", "error": str(e), "ts": int(time.time())})
+                log_event({"mode": "CLOSE_ERROR", "asset": asset, "reason": "whale_sell", "whale": (sell_evt or {}).get("whale"), "error": str(e), "ts": int(time.time())})
 
     actions = []
     total_usd = 0.0
