@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Aegis Ace Edition Metadata v1",
+  "type": "object",
+  "required": [
+    "editionId",
+    "seed",
+    "tier",
+    "agentRole",
+    "traits",
+    "styleVersion",
+    "createdAt",
+    "image"
+  ],
+  "properties": {
+    "editionId": {
+      "type": "string",
+      "pattern": "^AACE-[0-9]{6}$"
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["core", "rare", "mythic"]
+    },
+    "agentRole": {
+      "type": "string"
+    },
+    "traits": {
+      "type": "object",
+      "required": ["headgear", "eyes", "accessory", "symbol", "background"],
+      "properties": {
+        "headgear": { "type": "string" },
+        "eyes": { "type": "string" },
+        "accessory": { "type": "string" },
+        "symbol": { "type": "string" },
+        "background": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "styleVersion": {
+      "type": "string",
+      "const": "STYLE_BIBLE_v1"
+    },
+    "promptTemplate": {
+      "type": "string"
+    },
+    "negativePrompt": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "image": {
+      "type": "object",
+      "required": ["png1024", "jpg512"],
+      "properties": {
+        "png1024": { "type": "string" },
+        "jpg512": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "license": {
+      "type": "object",
+      "properties": {
+        "commercialUse": { "type": "boolean" },
+        "attributionRequired": { "type": "boolean" },
+        "termsVersion": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
