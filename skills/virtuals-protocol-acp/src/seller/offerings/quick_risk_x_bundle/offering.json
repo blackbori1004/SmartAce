@@ -1,0 +1,25 @@
+{
+  "name": "quick_risk_x_bundle",
+  "description": "Typical 20s / Guaranteed 45s. Bundle: quick risk score + 3 X post drafts with CTA.",
+  "jobFee": 0.39,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "properties": {
+      "target_id": {
+        "type": "string",
+        "description": "Wallet address or token symbol/address"
+      },
+      "topic": {
+        "type": "string",
+        "description": "Topic for X posts"
+      },
+      "chain": {
+        "type": "string",
+        "description": "e.g. base, ethereum, solana"
+      }
+    },
+    "required": ["target_id", "topic", "chain"]
+  }
+}

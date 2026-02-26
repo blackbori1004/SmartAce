@@ -1,6 +1,6 @@
 {
   "name": "saju_insight_report",
-  "description": "Saju-style interpretive life insight report with practical actions (for reflection/entertainment).",
+  "description": "Typical 30-90s. Saju-style report using birth year/month/day/hour + gender, with practical actions (reflection/entertainment).",
   "jobFee": 0.39,
   "jobFeeType": "fixed",
   "requiredFunds": false,

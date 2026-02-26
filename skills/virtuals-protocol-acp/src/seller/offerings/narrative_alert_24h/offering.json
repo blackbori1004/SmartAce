@@ -1,6 +1,6 @@
 {
   "name": "narrative_alert_24h",
-  "description": "24h narrative shift alert with signal summary and two response actions.",
+  "description": "First response in ~30s. 24h narrative shift summary with 2 response actions in JSON.",
   "jobFee": 0.29,
   "jobFeeType": "fixed",
   "requiredFunds": false,

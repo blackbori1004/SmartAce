@@ -1,7 +1,7 @@
 {
   "name": "quick_risk_score",
-  "description": "Instant wallet/token risk snapshot with risk_score, top 3 risks, and 3 actionable next steps.",
-  "jobFee": 0.19,
+  "description": "Typical 8s / Guaranteed 30s. Returns JSON: risk_score, top_3_risks, and 3 actionable next steps for wallet/token.",
+  "jobFee": 0.03,
   "jobFeeType": "fixed",
   "requiredFunds": false,
   "requirement": {

@@ -1,6 +1,6 @@
 {
   "name": "x_post_pack_3",
-  "description": "Generate 3 ready-to-post X drafts with hook variation, CTA, and hashtags.",
+  "description": "Typical 10s / Guaranteed 20s. Get 3 ready-to-post X drafts with hooks, CTA, and hashtags in JSON format.",
   "jobFee": 0.15,
   "jobFeeType": "fixed",
   "requiredFunds": false,
