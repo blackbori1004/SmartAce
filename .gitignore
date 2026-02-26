@@ -25,6 +25,7 @@ __pycache__/
 logs/
 tmp/
 .cache/
+.venv/
 .DS_Store
 
 # Sensitive runtime artifacts
