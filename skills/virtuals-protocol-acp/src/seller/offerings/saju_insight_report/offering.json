@@ -7,17 +7,26 @@
   "requirement": {
     "type": "object",
     "properties": {
-      "birth_date": {
-        "type": "string",
-        "description": "YYYY-MM-DD"
+      "birth_year": {
+        "type": "number",
+        "description": "Birth year (e.g., 1992)"
       },
-      "birth_time_known": {
-        "type": "boolean",
-        "description": "Whether exact birth time is known"
+      "birth_month": {
+        "type": "number",
+        "description": "Birth month (1-12)"
       },
-      "birth_time": {
+      "birth_day": {
+        "type": "number",
+        "description": "Birth day (1-31)"
+      },
+      "birth_hour": {
+        "type": "number",
+        "description": "Birth hour in 24h format (0-23)"
+      },
+      "gender": {
         "type": "string",
-        "description": "HH:mm if known"
+        "enum": ["male", "female"],
+        "description": "Gender for saju interpretation"
       },
       "question": {
         "type": "string",
@@ -28,6 +37,6 @@
         "description": "Output language code, default ko"
       }
     },
-    "required": ["birth_date", "birth_time_known", "question"]
+    "required": ["birth_year", "birth_month", "birth_day", "birth_hour", "gender", "question"]
   }
 }

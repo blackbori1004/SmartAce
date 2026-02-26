@@ -1,14 +1,19 @@
 import type { ExecuteJobResult, ValidationResult } from "../../runtime/offeringTypes.js";
 
-function biasFromDate(date: string): number {
-  return [...date].reduce((a, c) => a + c.charCodeAt(0), 0) % 100;
+function biasFromBirth(y: number, m: number, d: number, h: number, g: string): number {
+  const seed = `${y}-${m}-${d}-${h}-${g}`;
+  return [...seed].reduce((a, c) => a + c.charCodeAt(0), 0) % 100;
 }
 
 export async function executeJob(request: any): Promise<ExecuteJobResult> {
-  const birthDate = String(request?.birth_date ?? "");
+  const birthYear = Number(request?.birth_year ?? 0);
+  const birthMonth = Number(request?.birth_month ?? 0);
+  const birthDay = Number(request?.birth_day ?? 0);
+  const birthHour = Number(request?.birth_hour ?? 0);
+  const gender = String(request?.gender ?? "male");
   const question = String(request?.question ?? "");
   const lang = String(request?.language ?? "ko");
-  const bias = biasFromDate(birthDate);
+  const bias = biasFromBirth(birthYear, birthMonth, birthDay, birthHour, gender);
 
   const ko = {
     theme: bias > 50 ? "확장보다 정리와 내실이 유리한 흐름" : "새 시도와 학습 확장이 유리한 흐름",
@@ -45,9 +50,31 @@ export async function executeJob(request: any): Promise<ExecuteJobResult> {
 }
 
 export function validateRequirements(request: any): ValidationResult {
-  if (!request?.birth_date || !request?.question) {
-    return { valid: false, reason: "Missing required fields: birth_date, question" };
+  const y = Number(request?.birth_year ?? 0);
+  const m = Number(request?.birth_month ?? 0);
+  const d = Number(request?.birth_day ?? 0);
+  const h = Number(request?.birth_hour ?? -1);
+  const g = String(request?.gender ?? "");
+
+  if (!Number.isInteger(y) || y < 1900 || y > 2100) {
+    return { valid: false, reason: "birth_year must be a valid year (1900-2100)" };
   }
+  if (!Number.isInteger(m) || m < 1 || m > 12) {
+    return { valid: false, reason: "birth_month must be 1-12" };
+  }
+  if (!Number.isInteger(d) || d < 1 || d > 31) {
+    return { valid: false, reason: "birth_day must be 1-31" };
+  }
+  if (!Number.isInteger(h) || h < 0 || h > 23) {
+    return { valid: false, reason: "birth_hour must be 0-23" };
+  }
+  if (!["male", "female"].includes(g)) {
+    return { valid: false, reason: "gender must be male or female" };
+  }
+  if (!request?.question) {
+    return { valid: false, reason: "question is required" };
+  }
+
   return { valid: true };
 }
 
