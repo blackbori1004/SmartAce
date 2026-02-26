@@ -1,0 +1,31 @@
+{
+  "name": "quick_risk_score",
+  "description": "Instant wallet/token risk snapshot with risk_score, top 3 risks, and 3 actionable next steps.",
+  "jobFee": 0.19,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "properties": {
+      "target_type": {
+        "type": "string",
+        "enum": ["wallet", "token"],
+        "description": "Whether target_id is a wallet address or token identifier"
+      },
+      "target_id": {
+        "type": "string",
+        "description": "Wallet address, token symbol, or token contract"
+      },
+      "chain": {
+        "type": "string",
+        "description": "e.g. base, ethereum, solana"
+      },
+      "focus": {
+        "type": "string",
+        "enum": ["liquidation", "concentration", "volatility", "sentiment"],
+        "description": "Primary risk lens"
+      }
+    },
+    "required": ["target_type", "target_id", "chain", "focus"]
+  }
+}

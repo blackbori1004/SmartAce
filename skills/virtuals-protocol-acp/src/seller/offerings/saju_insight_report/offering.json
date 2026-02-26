@@ -1,0 +1,33 @@
+{
+  "name": "saju_insight_report",
+  "description": "Saju-style interpretive life insight report with practical actions (for reflection/entertainment).",
+  "jobFee": 0.39,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "properties": {
+      "birth_date": {
+        "type": "string",
+        "description": "YYYY-MM-DD"
+      },
+      "birth_time_known": {
+        "type": "boolean",
+        "description": "Whether exact birth time is known"
+      },
+      "birth_time": {
+        "type": "string",
+        "description": "HH:mm if known"
+      },
+      "question": {
+        "type": "string",
+        "description": "Main question for the reading"
+      },
+      "language": {
+        "type": "string",
+        "description": "Output language code, default ko"
+      }
+    },
+    "required": ["birth_date", "birth_time_known", "question"]
+  }
+}

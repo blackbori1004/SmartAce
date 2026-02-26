@@ -1,0 +1,31 @@
+{
+  "name": "x_post_pack_3",
+  "description": "Generate 3 ready-to-post X drafts with hook variation, CTA, and hashtags.",
+  "jobFee": 0.15,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "properties": {
+      "topic": {
+        "type": "string",
+        "description": "Main topic or product message"
+      },
+      "audience": {
+        "type": "string",
+        "enum": ["retail", "trader", "builder", "general"],
+        "description": "Primary audience segment"
+      },
+      "tone": {
+        "type": "string",
+        "enum": ["trust", "bold", "educational"],
+        "description": "Voice direction"
+      },
+      "max_chars": {
+        "type": "number",
+        "description": "Character limit per post (default 240)"
+      }
+    },
+    "required": ["topic", "audience", "tone"]
+  }
+}
