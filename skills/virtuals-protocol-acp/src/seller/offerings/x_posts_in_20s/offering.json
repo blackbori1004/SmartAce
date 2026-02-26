@@ -1,0 +1,27 @@
+{
+  "name": "x_posts_in_20s",
+  "description": "3 X Posts in 20s. Typical 10s / Guaranteed 20s. JSON output with hooks, CTA, hashtags.",
+  "jobFee": 0.09,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "properties": {
+      "topic": {
+        "type": "string",
+        "description": "Main topic or product message"
+      },
+      "audience": {
+        "type": "string",
+        "enum": ["retail", "trader", "builder", "general"],
+        "description": "Primary audience segment"
+      },
+      "tone": {
+        "type": "string",
+        "enum": ["trust", "bold", "educational"],
+        "description": "Voice direction"
+      }
+    },
+    "required": ["topic", "audience", "tone"]
+  }
+}

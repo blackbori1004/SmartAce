@@ -1,0 +1,24 @@
+{
+  "name": "narrative_shift_24h_2_actions",
+  "description": "24h Narrative Shift + 2 Actions. First response in ~30s, machine-readable JSON.",
+  "jobFee": 0.29,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "properties": {
+      "keywords": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Up to 5 keywords/tickers to monitor"
+      },
+      "language": {
+        "type": "string",
+        "description": "Output language code, default en"
+      }
+    },
+    "required": ["keywords"]
+  }
+}
