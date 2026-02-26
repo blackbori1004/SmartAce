@@ -1,0 +1,34 @@
+# Secrets / env
+.env
+.env.*
+*.env
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.csr
+*.ovpn
+id_rsa
+id_ed25519
+
+# OpenClaw local state/secrets
+.openclaw/
+.pi/
+.clawhub/
+
+# Node / Python / logs
+node_modules/
+__pycache__/
+*.pyc
+*.log
+logs/
+tmp/
+.cache/
+.DS_Store
+
+# Sensitive runtime artifacts
+*.session
+*.sqlite
+*.db
+*.jsonl
