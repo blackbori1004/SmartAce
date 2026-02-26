@@ -1,0 +1,18 @@
+{
+  "mode": "draft_then_approve",
+  "language": "en",
+  "maxChars": 240,
+  "hashtags": {
+    "min": 3,
+    "max": 5
+  },
+  "blockedTopics": [
+    "guaranteed profit",
+    "account renting/trading",
+    "private key sharing"
+  ],
+  "posting": {
+    "requireExplicitApproval": true,
+    "approvalKeyword": "승인"
+  }
+}
