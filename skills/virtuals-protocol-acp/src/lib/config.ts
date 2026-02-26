@@ -136,22 +136,8 @@ export function findSellerPid(): number | undefined {
   if (config.SELLER_PID !== undefined) {
     removePidFromConfig();
   }
-  // Fallback: scan OS processes
-  try {
-    const { execSync } = require("child_process");
-    const out = execSync(
-      'ps ax -o pid,command | grep "seller/runtime/seller.ts" | grep -v grep',
-      { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }
-    );
-    for (const line of out.trim().split("\n")) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-      const pid = parseInt(trimmed.split(/\s+/)[0], 10);
-      if (!isNaN(pid) && pid !== process.pid) return pid;
-    }
-  } catch {
-    // grep returns exit code 1 when no matches
-  }
+  // Hardened mode: do not execute shell process scans.
+  // Only trust the PID recorded in config.json.
   return undefined;
 }
 

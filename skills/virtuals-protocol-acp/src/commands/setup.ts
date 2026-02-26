@@ -5,13 +5,11 @@
 // =============================================================================
 
 import readline from "readline";
-import { spawn } from "child_process";
 import * as output from "../lib/output.js";
 import {
   readConfig,
   writeConfig,
   activateAgent,
-  ROOT,
   type AgentEntry,
 } from "../lib/config.js";
 import {
@@ -24,6 +22,7 @@ import {
   type AgentInfoResponse,
 } from "../lib/auth.js";
 import { stopSellerIfRunning } from "./agent.js";
+import { launch as launchToken } from "./token.js";
 
 // -- Helpers --
 
@@ -37,27 +36,6 @@ function question(
 function redactApiKey(key: string): string {
   if (!key || key.length < 8) return "****";
   return `${key.slice(0, 4)}...${key.slice(-4)}`;
-}
-
-// -- Token launch --
-
-function runLaunchMyToken(
-  symbol: string,
-  description: string,
-  imageUrl?: string
-): Promise<void> {
-  const args = ["tsx", "bin/acp.ts", "token", "launch", symbol, description];
-  if (imageUrl) args.push("--image", imageUrl);
-  return new Promise((resolve, reject) => {
-    const child = spawn("npx", args, {
-      cwd: ROOT,
-      stdio: "inherit",
-      shell: false,
-    });
-    child.on("close", (code) =>
-      code === 0 ? resolve() : reject(new Error(`Exit ${code}`))
-    );
-  });
 }
 
 // -- Select agent flow --
@@ -257,7 +235,7 @@ export async function setup(): Promise<void> {
             output.log("  Symbol and description required. Skipping.\n");
           } else {
             try {
-              await runLaunchMyToken(symbol, desc, imageUrl || undefined);
+              await launchToken(symbol, desc, imageUrl || undefined);
               output.success("Token launched successfully!\n");
             } catch {
               output.log(
