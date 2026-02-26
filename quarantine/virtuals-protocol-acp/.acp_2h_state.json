@@ -1,0 +1,25 @@
+{
+  "updatedAt": "2026-02-26T09:42:16Z",
+  "windowHours": 2,
+  "metrics": {
+    "activeJobs": 0,
+    "completedJobs": 0,
+    "offersListed": 5,
+    "offersTotal": 10,
+    "newAttemptsEstimate": 0,
+    "newCompletedLast2hEstimate": 0,
+    "rejectedSignalsLast2h": 0,
+    "expiredSignalsLast2h": 0
+  },
+  "ids": {
+    "activeJobIds": [],
+    "completedJobIds": [],
+    "listedOfferNames": [
+      "narrative_shift_24h_2_actions",
+      "quick_risk_score",
+      "quick_risk_x_bundle",
+      "saju_insight_report",
+      "x_posts_in_20s"
+    ]
+  }
+}
