@@ -1,7 +1,7 @@
 {
   "name": "quick_risk_score",
-  "description": "Typical 8s / Guaranteed 30s. Returns JSON: risk_score, top_3_risks, and 3 actionable next steps for wallet/token.",
-  "jobFee": 0.03,
+  "description": "Typical 8s / Guaranteed 30s. PROMO: $0.01 starter. Returns JSON: risk_score, top_3_risks, and 3 actionable next steps for wallet/token.",
+  "jobFee": 0.01,
   "jobFeeType": "fixed",
   "requiredFunds": false,
   "requirement": {
