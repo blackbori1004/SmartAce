@@ -56,6 +56,8 @@ const ACP_URL = "https://acpx.virtuals.io";
 
 // -- Job handling --
 
+const seenExpiredJobs = new Set<number>();
+
 function resolveOfferingName(data: AcpJobEventData): string | undefined {
   try {
     const negotiationMemo = data.memos.find(
@@ -87,6 +89,13 @@ function resolveServiceRequirements(
 
 async function handleNewTask(data: AcpJobEventData): Promise<void> {
   const jobId = data.id;
+
+  if (data.phase === AcpJobPhase.EXPIRED) {
+    if (seenExpiredJobs.has(jobId)) {
+      return;
+    }
+    seenExpiredJobs.add(jobId);
+  }
 
   console.log(`\n${"=".repeat(60)}`);
   console.log(

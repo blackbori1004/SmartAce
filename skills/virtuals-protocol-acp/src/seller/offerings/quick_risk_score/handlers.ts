@@ -38,9 +38,24 @@ export async function executeJob(request: any): Promise<ExecuteJobResult> {
 }
 
 export function validateRequirements(request: any): ValidationResult {
-  if (!request?.target_type || !request?.target_id || !request?.chain || !request?.focus) {
-    return { valid: false, reason: "Missing required fields: target_type, target_id, chain, focus" };
-  }
+  const targetType = String(request?.target_type ?? "").toLowerCase();
+  const targetId = String(request?.target_id ?? "").trim();
+  const chain = String(request?.chain ?? "").toLowerCase();
+  const focus = String(request?.focus ?? "").toLowerCase();
+
+  const allowedTargetTypes = new Set(["wallet", "token"]);
+  const allowedChains = new Set(["base", "ethereum", "arbitrum", "optimism", "polygon", "solana"]);
+  const allowedFocus = new Set(["liquidation", "concentration", "volatility", "sentiment"]);
+
+  if (!allowedTargetTypes.has(targetType))
+    return { valid: false, reason: "target_type must be wallet|token" };
+  if (!targetId || targetId.length < 2)
+    return { valid: false, reason: "target_id is required" };
+  if (!allowedChains.has(chain))
+    return { valid: false, reason: "chain must be one of: base, ethereum, arbitrum, optimism, polygon, solana" };
+  if (!allowedFocus.has(focus))
+    return { valid: false, reason: "focus must be liquidation|concentration|volatility|sentiment" };
+
   return { valid: true };
 }
 

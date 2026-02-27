@@ -1,9 +1,14 @@
 import type { ExecuteJobResult, ValidationResult } from "../../runtime/offeringTypes.js";
 
+function getReq(request: any): Record<string, any> {
+  return request?.requirement ?? request ?? {};
+}
+
 export async function executeJob(request: any): Promise<ExecuteJobResult> {
-  const wallet = String(request?.requirement?.wallet ?? "");
-  const chain = String(request?.requirement?.chain ?? "base");
-  const mode = String(request?.requirement?.risk_mode ?? "balanced");
+  const r = getReq(request);
+  const wallet = String(r.wallet ?? "");
+  const chain = String(r.chain ?? "base");
+  const mode = String(r.risk_mode ?? "balanced");
 
   const suggestions = {
     conservative: {
@@ -47,9 +52,22 @@ export async function executeJob(request: any): Promise<ExecuteJobResult> {
 }
 
 export function validateRequirements(request: any): ValidationResult {
-  const r = request?.requirement ?? {};
-  if (!r.wallet) return { valid: false, reason: "wallet is required" };
-  if (!r.chain) return { valid: false, reason: "chain is required" };
+  const r = getReq(request);
+  const wallet = String(r.wallet ?? "").trim();
+  const chain = String(r.chain ?? "").trim().toLowerCase();
+  const mode = String(r.risk_mode ?? "balanced").trim().toLowerCase();
+
+  const evmAddressRegex = /^0x[a-fA-F0-9]{40}$/;
+  const allowedChains = new Set(["base", "ethereum", "arbitrum", "optimism", "polygon", "solana"]);
+  const allowedModes = new Set(["conservative", "balanced", "aggressive"]);
+
+  if (!evmAddressRegex.test(wallet))
+    return { valid: false, reason: "wallet must be a valid EVM address (0x...)" };
+  if (!allowedChains.has(chain))
+    return { valid: false, reason: "chain must be one of: base, ethereum, arbitrum, optimism, polygon, solana" };
+  if (r.risk_mode && !allowedModes.has(mode))
+    return { valid: false, reason: "risk_mode must be conservative|balanced|aggressive" };
+
   return { valid: true };
 }
 

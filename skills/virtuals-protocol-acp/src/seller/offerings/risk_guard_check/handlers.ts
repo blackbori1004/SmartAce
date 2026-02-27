@@ -1,10 +1,15 @@
 import type { ExecuteJobResult, ValidationResult } from "../../runtime/offeringTypes.js";
 
+function getReq(request: any): Record<string, any> {
+  return request?.requirement ?? request ?? {};
+}
+
 export async function executeJob(request: any): Promise<ExecuteJobResult> {
-  const market = String(request?.requirement?.market ?? "UNKNOWN");
-  const entry = Number(request?.requirement?.entry ?? 0);
-  const leverage = Number(request?.requirement?.leverage ?? 1);
-  const maxLossPct = Number(request?.requirement?.max_loss_pct ?? 2);
+  const r = getReq(request);
+  const market = String(r.market ?? "UNKNOWN");
+  const entry = Number(r.entry ?? 0);
+  const leverage = Number(r.leverage ?? 1);
+  const maxLossPct = Number(r.max_loss_pct ?? 2);
 
   const riskTier = leverage >= 10 ? "HIGH" : leverage >= 5 ? "MEDIUM" : "LOW";
   const recommendedPositionUsd = Math.max(20, Math.round(1000 / Math.max(1, leverage)));
@@ -34,11 +39,21 @@ export async function executeJob(request: any): Promise<ExecuteJobResult> {
 }
 
 export function validateRequirements(request: any): ValidationResult {
-  const r = request?.requirement ?? {};
-  if (!r.market) return { valid: false, reason: "market is required" };
-  if (Number(r.entry) <= 0) return { valid: false, reason: "entry must be > 0" };
-  if (Number(r.leverage) <= 0) return { valid: false, reason: "leverage must be > 0" };
-  if (Number(r.max_loss_pct) <= 0) return { valid: false, reason: "max_loss_pct must be > 0" };
+  const r = getReq(request);
+  if (!r.market || String(r.market).trim().length < 3)
+    return { valid: false, reason: "market is required (e.g. ETH/USDC)" };
+
+  const entry = Number(r.entry);
+  const leverage = Number(r.leverage);
+  const maxLossPct = Number(r.max_loss_pct);
+
+  if (!Number.isFinite(entry) || entry <= 0)
+    return { valid: false, reason: "entry must be a positive number" };
+  if (!Number.isFinite(leverage) || leverage < 1 || leverage > 50)
+    return { valid: false, reason: "leverage must be between 1 and 50" };
+  if (!Number.isFinite(maxLossPct) || maxLossPct <= 0 || maxLossPct > 20)
+    return { valid: false, reason: "max_loss_pct must be > 0 and <= 20" };
+
   return { valid: true };
 }
 
