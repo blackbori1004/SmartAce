@@ -1,15 +1,40 @@
 {
   "name": "strategy_risk_plan",
-  "description": "Premium strategy-level risk blueprint. Returns position sizing framework, exposure limits, risk ladder, and execution guardrails for autonomous agents.",
-  "jobFee": 8,
+  "description": "Strategy Risk Blueprint (5-10m). Position sizing, exposure limits, drawdown ladder, and execution guardrails for autonomous trading agents.",
+  "jobFee": 4.99,
   "jobFeeType": "fixed",
   "requiredFunds": false,
   "requirement": {
-    "strategy_name": "string",
-    "markets": "array",
-    "timeframe": "string",
-    "target_return_pct": "number",
-    "max_drawdown_pct": "number",
-    "capital_usd": "number"
+    "type": "object",
+    "properties": {
+      "strategy_name": {
+        "type": "string",
+        "description": "Strategy name"
+      },
+      "markets": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Tradable markets/pairs"
+      },
+      "timeframe": {
+        "type": "string",
+        "description": "Primary timeframe (e.g. intraday, swing)"
+      },
+      "target_return_pct": {
+        "type": "number",
+        "description": "Target return percentage"
+      },
+      "max_drawdown_pct": {
+        "type": "number",
+        "description": "Maximum tolerated drawdown percentage"
+      },
+      "capital_usd": {
+        "type": "number",
+        "description": "Strategy capital in USD"
+      }
+    },
+    "required": ["strategy_name", "markets", "max_drawdown_pct", "capital_usd"]
   }
 }

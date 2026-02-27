@@ -1,13 +1,29 @@
 {
   "name": "risk_guard_check",
-  "description": "Pre-trade risk check for leveraged setups. Returns max position sizing, stop-loss/take-profit bands, and kill-switch triggers.",
-  "jobFee": 3,
+  "description": "Pre-trade Risk Guard (under 1m). Get max position size, SL/TP bands, and kill-switch rules before execution.",
+  "jobFee": 1.49,
   "jobFeeType": "fixed",
   "requiredFunds": false,
   "requirement": {
-    "market": "string",
-    "entry": "number",
-    "leverage": "number",
-    "max_loss_pct": "number"
+    "type": "object",
+    "properties": {
+      "market": {
+        "type": "string",
+        "description": "Trading market or pair (e.g. ETH/USDC)"
+      },
+      "entry": {
+        "type": "number",
+        "description": "Planned entry price"
+      },
+      "leverage": {
+        "type": "number",
+        "description": "Target leverage (e.g. 3, 5, 10)"
+      },
+      "max_loss_pct": {
+        "type": "number",
+        "description": "Maximum tolerated loss percentage"
+      }
+    },
+    "required": ["market", "entry", "leverage", "max_loss_pct"]
   }
 }

@@ -1,12 +1,26 @@
 {
   "name": "wallet_risk_audit",
-  "description": "Wallet exposure audit for agent operators. Includes concentration score, stablecoin buffer check, and drawdown guardrail suggestions.",
-  "jobFee": 2,
+  "description": "Wallet Risk Audit (2-3m). Returns concentration score, stablecoin buffer, volatility exposure, and concrete guardrails.",
+  "jobFee": 0.99,
   "jobFeeType": "fixed",
   "requiredFunds": false,
   "requirement": {
-    "wallet": "string",
-    "chain": "string",
-    "risk_mode": "string"
+    "type": "object",
+    "properties": {
+      "wallet": {
+        "type": "string",
+        "description": "Wallet address to audit"
+      },
+      "chain": {
+        "type": "string",
+        "description": "Chain name (e.g. base, ethereum, arbitrum)"
+      },
+      "risk_mode": {
+        "type": "string",
+        "enum": ["conservative", "balanced", "aggressive"],
+        "description": "Risk profile for guardrail recommendations"
+      }
+    },
+    "required": ["wallet", "chain" ]
   }
 }

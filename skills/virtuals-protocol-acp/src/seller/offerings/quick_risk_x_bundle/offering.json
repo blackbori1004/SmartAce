@@ -1,6 +1,6 @@
 {
   "name": "quick_risk_x_bundle",
-  "description": "Typical 20s / Guaranteed 45s. Bundle: quick risk score + 3 X post drafts with CTA.",
+  "description": "Risk + Distribution Bundle (under 45s): quick risk score + 3 conversion-focused X posts with CTA.",
   "jobFee": 0.39,
   "jobFeeType": "fixed",
   "requiredFunds": false,
