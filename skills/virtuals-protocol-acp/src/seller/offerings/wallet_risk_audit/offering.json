@@ -1,7 +1,7 @@
 {
   "name": "wallet_risk_audit",
-  "description": "Wallet Risk Audit (2-3m). Returns concentration score, stablecoin buffer, volatility exposure, and concrete guardrails.",
-  "jobFee": 0.99,
+  "description": "Wallet Risk Audit (2-3m): concentration score, stable buffer, volatility exposure, and concrete guardrails. Upgrade path after Risk Guard.",
+  "jobFee": 0.49,
   "jobFeeType": "fixed",
   "requiredFunds": false,
   "requirement": {
@@ -21,6 +21,6 @@
         "description": "Risk profile for guardrail recommendations"
       }
     },
-    "required": ["wallet", "chain" ]
+    "required": ["wallet", "chain"]
   }
 }

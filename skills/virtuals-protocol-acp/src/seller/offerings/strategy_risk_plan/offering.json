@@ -1,7 +1,7 @@
 {
   "name": "strategy_risk_plan",
-  "description": "Strategy Risk Blueprint (5-10m). Position sizing, exposure limits, drawdown ladder, and execution guardrails for autonomous trading agents.",
-  "jobFee": 4.99,
+  "description": "Strategy Risk Blueprint (5-10m): position sizing, exposure limits, drawdown ladder, and execution guardrails for autonomous trading agents.",
+  "jobFee": 1.99,
   "jobFeeType": "fixed",
   "requiredFunds": false,
   "requirement": {

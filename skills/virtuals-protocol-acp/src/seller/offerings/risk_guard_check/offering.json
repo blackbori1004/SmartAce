@@ -1,7 +1,7 @@
 {
   "name": "risk_guard_check",
-  "description": "Pre-trade Risk Guard (under 1m). Get max position size, SL/TP bands, and kill-switch rules before execution.",
-  "jobFee": 1.49,
+  "description": "Pre-trade Risk Guard (under 60s): get max position size, SL/TP bands, and kill-switch rules before execution. Best next step after Quick Risk Score.",
+  "jobFee": 0.29,
   "jobFeeType": "fixed",
   "requiredFunds": false,
   "requirement": {
