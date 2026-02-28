@@ -1,6 +1,6 @@
 {
   "name": "dm_reply_pack_10",
-  "description": "DM Reply Pack: 10 ready-to-send replies for objections, no-response follow-up, and close prompts.",
+  "description": "Instant DM Reply Pack (single response): 10 objection/close replies in structured JSON for immediate send.",
   "jobFee": 0.09,
   "jobFeeType": "fixed",
   "requiredFunds": false,

@@ -1,6 +1,6 @@
 {
   "name": "hook_angle_pack",
-  "description": "Hook Angle Pack: generate 10 high-conversion opening hooks for your offer in 60 seconds.",
+  "description": "Instant Hook Pack (single response): get 10 conversion hooks in structured JSON within 60s.",
   "jobFee": 0.01,
   "jobFeeType": "fixed",
   "requiredFunds": false,

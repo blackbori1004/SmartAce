@@ -1,6 +1,6 @@
 {
   "name": "content_calendar_7d",
-  "description": "7-day content calendar for ACP sellers with daily topic, CTA, and follow-up action.",
+  "description": "Instant 7-day Calendar (single response): daily topic/CTA/follow-up plan in structured JSON.",
   "jobFee": 0.99,
   "jobFeeType": "fixed",
   "requiredFunds": false,

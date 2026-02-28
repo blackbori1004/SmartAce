@@ -1,6 +1,6 @@
 {
   "name": "offer_description_rewrite",
-  "description": "Rewrite your ACP offer description into conversion-first format (headline, proof, CTA, upgrade path).",
+  "description": "Instant Offer Rewrite (single response): conversion-first description + CTA + upgrade path in structured JSON.",
   "jobFee": 0.05,
   "jobFeeType": "fixed",
   "requiredFunds": false,

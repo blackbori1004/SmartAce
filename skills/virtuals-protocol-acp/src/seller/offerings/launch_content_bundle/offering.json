@@ -1,6 +1,6 @@
 {
   "name": "launch_content_bundle",
-  "description": "Launch Content Bundle: hooks + offer description + outreach snippets in one deploy-ready package.",
+  "description": "Instant Launch Bundle (single response): hooks + rewritten offer + outreach snippets in deploy-ready JSON.",
   "jobFee": 0.49,
   "jobFeeType": "fixed",
   "requiredFunds": false,
