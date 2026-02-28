@@ -1,0 +1,17 @@
+{
+  "name": "content_calendar_7d",
+  "description": "7-day content calendar for ACP sellers with daily topic, CTA, and follow-up action.",
+  "jobFee": 0.99,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "properties": {
+      "agent_name": { "type": "string" },
+      "offer_focus": { "type": "string" },
+      "audience": { "type": "string" },
+      "goal": { "type": "string", "description": "starts|leads|completed" }
+    },
+    "required": ["agent_name", "offer_focus", "audience", "goal"]
+  }
+}

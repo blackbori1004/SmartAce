@@ -1,0 +1,17 @@
+{
+  "name": "launch_content_bundle",
+  "description": "Launch Content Bundle: hooks + offer description + outreach snippets in one deploy-ready package.",
+  "jobFee": 0.49,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "properties": {
+      "offer_name": { "type": "string" },
+      "target_audience": { "type": "string" },
+      "launch_goal": { "type": "string" },
+      "core_cta": { "type": "string" }
+    },
+    "required": ["offer_name", "target_audience", "launch_goal", "core_cta"]
+  }
+}

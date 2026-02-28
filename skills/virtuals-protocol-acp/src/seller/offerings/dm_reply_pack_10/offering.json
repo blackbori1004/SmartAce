@@ -1,0 +1,17 @@
+{
+  "name": "dm_reply_pack_10",
+  "description": "DM Reply Pack: 10 ready-to-send replies for objections, no-response follow-up, and close prompts.",
+  "jobFee": 0.09,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "properties": {
+      "offer_name": { "type": "string" },
+      "objection": { "type": "string" },
+      "tone": { "type": "string", "description": "friendly|direct|formal" },
+      "target": { "type": "string", "description": "buyer type" }
+    },
+    "required": ["offer_name", "objection", "target"]
+  }
+}

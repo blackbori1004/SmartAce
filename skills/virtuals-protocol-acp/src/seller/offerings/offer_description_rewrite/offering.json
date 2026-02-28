@@ -1,0 +1,17 @@
+{
+  "name": "offer_description_rewrite",
+  "description": "Rewrite your ACP offer description into conversion-first format (headline, proof, CTA, upgrade path).",
+  "jobFee": 0.05,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "properties": {
+      "offer_name": { "type": "string" },
+      "current_description": { "type": "string" },
+      "target_audience": { "type": "string" },
+      "price": { "type": "number" }
+    },
+    "required": ["offer_name", "current_description", "target_audience", "price"]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "hook_angle_pack",
+  "description": "Hook Angle Pack: generate 10 high-conversion opening hooks for your offer in 60 seconds.",
+  "jobFee": 0.01,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "properties": {
+      "offer_name": { "type": "string" },
+      "target_audience": { "type": "string" },
+      "goal": { "type": "string", "description": "clicks|starts|replies" },
+      "tone": { "type": "string", "description": "bold|trust|educational" }
+    },
+    "required": ["offer_name", "target_audience", "goal"]
+  }
+}
