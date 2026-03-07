@@ -1,0 +1,171 @@
+{
+  "meta": {
+    "title": "One Day Korea Trip — All-Inclusive Booking via WhatsApp",
+    "description": "All-inclusive one-day Korea package for Indonesian travelers. Detailed itinerary, transparent pricing, and direct WhatsApp booking.",
+    "ogTitle": "One Day Korea Trip — All-Inclusive",
+    "ogDescription": "10–12 hour program with detailed itinerary, hanbok experience, food, and city highlights."
+  },
+  "hero": {
+    "badge": "ALL-INCLUSIVE VERSION · Transparent Program Details",
+    "title": "One Day Korea Trip\nDetailed Program + Clear Budget 🇮🇩✨🇰🇷",
+    "subtitle": "Tap each package card to see hour-by-hour itinerary, inclusions, and cost breakdown. Perfect for travelers who want clear value before booking.",
+    "ctaPrimary": "Explore Package Details",
+    "ctaSecondary": "View Gallery"
+  },
+  "kpis": [
+    { "value": "10–12 hours", "label": "Trip duration" },
+    { "value": "2–6 pax", "label": "Ideal group size" },
+    { "value": "From ₩149,000", "label": "All-inclusive / person" },
+    { "value": "Tap for details", "label": "Itinerary + cost breakdown" }
+  ],
+  "sections": {
+    "packagesTitle": "Package Options",
+    "packagesHint": "Tap / click a package card to view detailed itinerary, inclusions, and all-inclusive cost breakdown.",
+    "galleryTitle": "Spots & Mood Preview",
+    "bookingTitle": "Direct Reservation"
+  },
+  "packages": [
+    {
+      "title": "Seoul Trend & Café Hopping",
+      "tagline": "Best for viral spots, aesthetic cafés, and light shopping",
+      "price": "₩149,000 / pax (all-inclusive)",
+      "finalPrice": "₩149,000 / pax",
+      "detailLabel": "View full details",
+      "highlights": [
+        "Hongdae creative streets + curated content spots",
+        "2 aesthetic cafés (1 signature drink each)",
+        "Myeongdong shopping stop + night vibe",
+        "Efficient route planning to minimize wasted time"
+      ],
+      "itinerary": [
+        { "time": "09:30", "title": "Meet-up & route briefing", "desc": "Daily rundown, content checklist, and weather backup options." },
+        { "time": "10:30", "title": "Hongdae trend walk", "desc": "Viral street areas, photo angles, and quick fashion/K-beauty picks." },
+        { "time": "12:30", "title": "Lunch set", "desc": "Popular Korean meal with non-spicy options if needed." },
+        { "time": "14:00", "title": "Café hopping session", "desc": "2 curated cafés, each including 1 signature drink." },
+        { "time": "17:30", "title": "Myeongdong night vibe", "desc": "Street atmosphere, snack stop, and free shopping time." }
+      ],
+      "inclusions": [
+        "Trip coordinator (ID-friendly support)",
+        "Rundown + route optimization",
+        "In-city transportation (subway/bus + short taxi hops)",
+        "1x lunch set",
+        "2x café signature drinks",
+        "1x street snack budget",
+        "Photo mission recommendations + content checklist"
+      ],
+      "costBreakdown": [
+        { "item": "Trip coordinator operations", "cost": "₩45,000" },
+        { "item": "In-city transportation (avg)", "cost": "₩18,000" },
+        { "item": "2 café signature drinks", "cost": "₩22,000" },
+        { "item": "Lunch set", "cost": "₩16,000" },
+        { "item": "Street snack budget", "cost": "₩8,000" },
+        { "item": "Content route planning + buffer", "cost": "₩40,000" }
+      ],
+      "notes": "All-inclusive per person for Seoul route. Personal shopping is not included."
+    },
+    {
+      "title": "K-Culture Explorer (Hanbok Included)",
+      "tagline": "Korean culture route with hanbok experience + sunset city point",
+      "price": "₩169,000 / pax (all-inclusive)",
+      "finalPrice": "₩169,000 / pax",
+      "detailLabel": "View full details",
+      "highlights": [
+        "Hanbok rental + simple hair styling",
+        "Bukchon + Gyeongbokgung culture route",
+        "Halal-friendly lunch option",
+        "N Seoul Tower sunset session"
+      ],
+      "itinerary": [
+        { "time": "09:00", "title": "Hanbok fitting session", "desc": "Choose hanbok, basic accessories, and quick styling for cultural photos." },
+        { "time": "10:30", "title": "Bukchon + palace route", "desc": "Heritage walking route with recommended photo points." },
+        { "time": "12:30", "title": "Lunch stop", "desc": "Lunch with halal-friendly / non-pork menu options." },
+        { "time": "15:00", "title": "Culture café break", "desc": "Short rest before moving to Namsan area." },
+        { "time": "17:00", "title": "N Seoul Tower sunset", "desc": "Observatory visit + golden-hour city view." }
+      ],
+      "inclusions": [
+        "Premium hanbok rental (est. 3–4h)",
+        "Simple hair styling + basic accessories",
+        "Trip coordinator + cultural route support",
+        "In-city transportation",
+        "1x lunch set",
+        "1x café break budget",
+        "N Seoul Tower observatory ticket",
+        "Photo spot guidance"
+      ],
+      "costBreakdown": [
+        { "item": "Hanbok rental + styling (avg)", "cost": "₩35,000" },
+        { "item": "Cultural route support", "cost": "₩18,000" },
+        { "item": "Halal-friendly lunch budget", "cost": "₩18,000" },
+        { "item": "N Seoul Tower observatory", "cost": "₩24,000" },
+        { "item": "In-city transportation (avg)", "cost": "₩20,000" },
+        { "item": "Operations + buffer", "cost": "₩54,000" }
+      ],
+      "notes": "With hanbok, some palace areas may allow free entry depending on local policy on visit day."
+    },
+    {
+      "title": "Nature + City Balance",
+      "tagline": "Relaxed aesthetic route balancing city parks and hidden alleys",
+      "price": "₩179,000 / pax (all-inclusive)",
+      "finalPrice": "₩179,000 / pax",
+      "detailLabel": "View full details",
+      "highlights": [
+        "Seoul Forest / Hangang route for a relaxed vibe",
+        "Picnic-style experience (content-friendly)",
+        "Ikseondong hidden alley exploration",
+        "Skyline ending spot for night photos"
+      ],
+      "itinerary": [
+        { "time": "10:00", "title": "Start at Seoul Forest", "desc": "Morning walk, natural-light photo spots, and mini content briefing." },
+        { "time": "12:00", "title": "Brunch set", "desc": "Brunch + drink with curated budget menu." },
+        { "time": "14:00", "title": "Hangang picnic concept", "desc": "Picnic mat + basic snack set for a laid-back session." },
+        { "time": "16:30", "title": "Ikseondong alley route", "desc": "Hidden-gem route for architecture photos + café stop." },
+        { "time": "19:00", "title": "Skyline ending", "desc": "Wrap-up at the best city-view night spot for the day." }
+      ],
+      "inclusions": [
+        "Trip coordinator + route curation",
+        "In-city transportation",
+        "Brunch + dessert budget",
+        "Picnic basic set (mat + snack kit)",
+        "1x café stop budget",
+        "Night skyline photo route assistance"
+      ],
+      "costBreakdown": [
+        { "item": "Route curation + trip coordination", "cost": "₩48,000" },
+        { "item": "Brunch + dessert budget", "cost": "₩26,000" },
+        { "item": "Picnic basic set", "cost": "₩24,000" },
+        { "item": "Café stop budget", "cost": "₩12,000" },
+        { "item": "In-city transportation (avg)", "cost": "₩24,000" },
+        { "item": "Operations + buffer", "cost": "₩45,000" }
+      ],
+      "notes": "All-inclusive price reflects average Seoul day costs for food/drink and mobility."
+    }
+  ],
+  "photos": [
+    {
+      "image": "https://images.unsplash.com/photo-1548115184-bc6544d06a58?auto=format&fit=crop&w=1200&q=80",
+      "alt": "Seoul city view at night",
+      "caption": "City lights & skyline vibe"
+    },
+    {
+      "image": "https://images.unsplash.com/photo-1517154421773-0529f29ea451?auto=format&fit=crop&w=1200&q=80",
+      "alt": "Korean cafe aesthetic",
+      "caption": "Café hopping aesthetic"
+    },
+    {
+      "image": "https://images.unsplash.com/photo-1538485399081-7c8978443f31?auto=format&fit=crop&w=1200&q=80",
+      "alt": "Traditional Korean street",
+      "caption": "Culture + modern mix"
+    }
+  ],
+  "contact": {
+    "ownerWa": "6280000000000",
+    "waLabel": "+62-xxx-xxxx-xxxx",
+    "instagram": "@yourbrand.korea",
+    "quickMessage": "Hi! I'm interested in the all-inclusive One Day Korea Trip. Could you share available dates and booking steps?"
+  },
+  "booking": {
+    "buttonText": "Send Booking Request via WhatsApp",
+    "hint": "This button opens WhatsApp with an auto-filled booking format."
+  },
+  "footer": "One Day Korea Package · All-inclusive detail edition · Booking via WhatsApp"
+}

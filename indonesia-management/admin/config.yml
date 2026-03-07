@@ -11,9 +11,9 @@ collections:
   - name: "site"
     label: "Site Content"
     files:
-      - label: "One Day Korea Page"
-        name: "one-day-korea"
-        file: "indonesia-management/data/site.json"
+      - label: "One Day Korea Page (ID)"
+        name: "one-day-korea-id"
+        file: "indonesia-management/data/site.id.json"
         format: "json"
         fields:
           - label: "Meta"
