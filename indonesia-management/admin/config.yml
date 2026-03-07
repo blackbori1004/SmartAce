@@ -49,19 +49,51 @@ collections:
             widget: "object"
             fields:
               - { label: "Packages Title", name: "packagesTitle", widget: "string" }
+              - { label: "Packages Hint", name: "packagesHint", widget: "text", required: false }
               - { label: "Gallery Title", name: "galleryTitle", widget: "string" }
               - { label: "Booking Title", name: "bookingTitle", widget: "string" }
 
           - label: "Packages"
             name: "packages"
             widget: "list"
+            summary: "{{fields.title}} - {{fields.price}}"
             fields:
               - { label: "Package Name", name: "title", widget: "string" }
-              - { label: "Price", name: "price", widget: "string" }
-              - label: "Bullets"
-                name: "bullets"
+              - { label: "Tagline", name: "tagline", widget: "string", required: false }
+              - { label: "Price (card)", name: "price", widget: "string" }
+              - { label: "Final Price (breakdown)", name: "finalPrice", widget: "string", required: false }
+              - { label: "Detail Button Label", name: "detailLabel", widget: "string", required: false }
+
+              - label: "Highlights"
+                name: "highlights"
                 widget: "list"
+                required: false
                 field: { label: "Point", name: "point", widget: "string" }
+
+              - label: "Itinerary"
+                name: "itinerary"
+                widget: "list"
+                required: false
+                fields:
+                  - { label: "Time", name: "time", widget: "string", required: false }
+                  - { label: "Title", name: "title", widget: "string" }
+                  - { label: "Description", name: "desc", widget: "text", required: false }
+
+              - label: "Inclusions"
+                name: "inclusions"
+                widget: "list"
+                required: false
+                field: { label: "Included Item", name: "item", widget: "string" }
+
+              - label: "Cost Breakdown"
+                name: "costBreakdown"
+                widget: "list"
+                required: false
+                fields:
+                  - { label: "Cost Item", name: "item", widget: "string" }
+                  - { label: "Cost", name: "cost", widget: "string" }
+
+              - { label: "Notes", name: "notes", widget: "text", required: false }
 
           - label: "Photos"
             name: "photos"

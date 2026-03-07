@@ -101,6 +101,71 @@
     ul { margin: 8px 0 0; padding-left: 18px; }
     li { margin: 4px 0; color: #d8e0ff; }
 
+    .package-card details {
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      background: rgba(255,255,255,.02);
+      overflow: hidden;
+    }
+    .package-card summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .package-card summary::-webkit-details-marker { display: none; }
+    .package-title { font-size: 21px; margin: 0; }
+    .package-tagline { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+    .package-toggle {
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 10px;
+      white-space: nowrap;
+      color: #d7dcff;
+    }
+    .package-card details[open] .package-toggle { background: rgba(125,107,255,.2); }
+    .package-body { padding: 0 14px 14px; border-top: 1px solid rgba(255,255,255,.08); }
+    .package-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .mini-box {
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(0,0,0,.15);
+    }
+    .mini-box h4 { margin: 0 0 8px; font-size: 14px; color: #cfd7ff; }
+    .timeline { margin: 0; padding-left: 18px; }
+    .timeline li { margin: 8px 0; }
+    .timeline small { color: #9db0ec; display: block; margin-bottom: 3px; }
+    .cost-list { list-style: none; padding: 0; margin: 0; }
+    .cost-list li {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px dashed rgba(255,255,255,.12);
+      padding: 6px 0;
+      margin: 0;
+    }
+    .cost-list li:last-child { border-bottom: 0; }
+    .final-price {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,.14);
+      display: flex;
+      justify-content: space-between;
+      font-weight: 800;
+      color: #ffe07c;
+    }
+
     .gallery {
       display: grid;
       gap: 12px;
@@ -197,6 +262,7 @@ Untuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷</h1>
 
     <section id="paket">
       <h2 id="packageSectionTitle">Paket Pilihan</h2>
+      <p class="hint" id="packageSectionHint">Klik setiap paket untuk lihat detail itinerary, fasilitas, dan breakdown biaya all-inclusive.</p>
       <div class="cards" id="packageCards"></div>
     </section>
 
@@ -297,6 +363,7 @@ Untuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷</h1>
       ],
       sections: {
         packagesTitle: "Paket Pilihan",
+        packagesHint: "Klik setiap paket untuk lihat detail itinerary, fasilitas, dan breakdown biaya all-inclusive.",
         galleryTitle: "Preview Spot & Mood",
         bookingTitle: "Reservasi Langsung"
       },
@@ -391,14 +458,54 @@ Untuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷</h1>
       packageSelect.innerHTML = '<option value="">Pilih paket</option>';
 
       packages.forEach((pkg) => {
-        const bullets = (pkg.bullets || []).map((b) => `<li>${escapeHtml(b)}</li>`).join("");
+        const highlights = (pkg.highlights || pkg.bullets || []).map((b) => `<li>${escapeHtml(b)}</li>`).join("");
+        const itinerary = (pkg.itinerary || []).map((step) => `
+          <li>
+            <small>${escapeHtml(step.time || "")}</small>
+            <strong>${escapeHtml(step.title || "")}</strong>
+            <div>${escapeHtml(step.desc || "")}</div>
+          </li>
+        `).join("");
+
+        const inclusions = (pkg.inclusions || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+
+        const breakdown = (pkg.costBreakdown || []).map((line) => `
+          <li>
+            <span>${escapeHtml(line.item || "")}</span>
+            <strong>${escapeHtml(line.cost || "")}</strong>
+          </li>
+        `).join("");
+
+        const detailsId = `pkg-${Math.random().toString(36).slice(2, 9)}`;
+        const detailLabel = pkg.detailLabel || "Klik untuk lihat detail";
+
         const card = document.createElement("article");
-        card.className = "card";
+        card.className = "card package-card";
         card.innerHTML = `
-          <h3>${escapeHtml(pkg.title || "")}</h3>
-          <p class="price">${escapeHtml(pkg.price || "")}</p>
-          <ul>${bullets}</ul>
+          <details id="${detailsId}">
+            <summary>
+              <div>
+                <h3 class="package-title">${escapeHtml(pkg.title || "")}</h3>
+                <p class="package-tagline">${escapeHtml(pkg.tagline || "Program detail + budget transparan")}</p>
+                <p class="price">${escapeHtml(pkg.price || "")}</p>
+              </div>
+              <span class="package-toggle">${escapeHtml(detailLabel)}</span>
+            </summary>
+
+            <div class="package-body">
+              ${highlights ? `<div class="mini-box"><h4>Highlight Program</h4><ul>${highlights}</ul></div>` : ""}
+
+              <div class="package-grid">
+                ${itinerary ? `<div class="mini-box"><h4>Rundown (estimasi)</h4><ol class="timeline">${itinerary}</ol></div>` : ""}
+                ${inclusions ? `<div class="mini-box"><h4>All-inclusive termasuk</h4><ul>${inclusions}</ul></div>` : ""}
+                ${breakdown ? `<div class="mini-box"><h4>Rata-rata komponen biaya</h4><ul class="cost-list">${breakdown}</ul>${pkg.finalPrice ? `<div class="final-price"><span>Harga Paket</span><span>${escapeHtml(pkg.finalPrice)}</span></div>` : ""}</div>` : ""}
+              </div>
+
+              ${pkg.notes ? `<p class="hint" style="margin-top:10px">${escapeHtml(pkg.notes)}</p>` : ""}
+            </div>
+          </details>
         `;
+
         packageCards.appendChild(card);
 
         const opt = document.createElement("option");
@@ -446,6 +553,7 @@ Untuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷</h1>
       });
 
       document.getElementById("packageSectionTitle").textContent = content.sections?.packagesTitle || DEFAULT_CONTENT.sections.packagesTitle;
+      document.getElementById("packageSectionHint").textContent = content.sections?.packagesHint || DEFAULT_CONTENT.sections.packagesHint || "Klik setiap paket untuk lihat detail itinerary, fasilitas, dan breakdown biaya all-inclusive.";
       document.getElementById("galleryTitle").textContent = content.sections?.galleryTitle || DEFAULT_CONTENT.sections.galleryTitle;
       document.getElementById("bookingTitle").textContent = content.sections?.bookingTitle || DEFAULT_CONTENT.sections.bookingTitle;
 

@@ -1,58 +1,269 @@
 {
   "meta": {
-    "title": "One Day Korea Trip — Booking Langsung via WhatsApp",
-    "description": "Paket one-day Korea untuk traveler Indonesia usia 20-an. Bisa booking langsung via WhatsApp dalam 1 klik.",
-    "ogTitle": "One Day Korea Trip — Booking Langsung",
-    "ogDescription": "Paket one-day Korea untuk traveler Indonesia usia 20-an."
+    "title": "One Day Korea Trip — All-Inclusive Booking via WhatsApp",
+    "description": "Paket one-day Korea all-inclusive untuk traveler Indonesia. Detail rundown, biaya transparan, dan booking langsung via WhatsApp.",
+    "ogTitle": "One Day Korea Trip — All-Inclusive",
+    "ogDescription": "Program 10–12 jam dengan detail itinerary, hanbok experience, kuliner, dan city highlights."
   },
   "hero": {
-    "badge": "REAL-USE VERSION · WhatsApp Booking Enabled",
-    "title": "One Day Korea Trip\nUntuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷",
-    "subtitle": "Paket harian anti-ribet untuk kamu yang pengen Korea vibes maksimal dalam 1 hari: spot viral, café aesthetic, route efisien, dan jadwal yang cocok buat konten + healing + kuliner.",
-    "ctaPrimary": "Booking Sekarang",
-    "ctaSecondary": "Lihat Paket"
+    "badge": "ALL-INCLUSIVE VERSION · Detail Program Transparan",
+    "title": "One Day Korea Trip\nDetail Program + Budget Jelas 🇮🇩✨🇰🇷",
+    "subtitle": "Setiap paket bisa diklik untuk lihat rundown jam-per-jam, fasilitas, dan komponen biaya. Cocok untuk traveler yang ingin tahu value sebelum booking.",
+    "ctaPrimary": "Cek Paket Detail",
+    "ctaSecondary": "Lihat Gallery"
   },
   "kpis": [
-    { "value": "10–12 jam", "label": "Durasi trip" },
-    { "value": "2–6 pax", "label": "Ideal group size" },
-    { "value": "Mulai ₩129,000", "label": "Harga per orang" },
-    { "value": "Instant booking", "label": "via WhatsApp" }
+    {
+      "value": "10–12 jam",
+      "label": "Durasi trip"
+    },
+    {
+      "value": "2–6 pax",
+      "label": "Ideal group size"
+    },
+    {
+      "value": "Mulai ₩149,000",
+      "label": "All-inclusive / orang"
+    },
+    {
+      "value": "Klik untuk detail",
+      "label": "Rundown + breakdown biaya"
+    }
   ],
   "sections": {
     "packagesTitle": "Paket Pilihan",
+    "packagesHint": "Tap / klik kartu paket untuk lihat detail itinerary, fasilitas, dan breakdown biaya all-inclusive.",
     "galleryTitle": "Preview Spot & Mood",
     "bookingTitle": "Reservasi Langsung"
   },
   "packages": [
     {
       "title": "Seoul Trend & Café Hopping",
-      "price": "₩129,000 / pax",
-      "bullets": [
-        "Hongdae + area foto viral",
-        "2 café aesthetic (rekomendasi terkurasi)",
-        "Shopping stop (fashion/K-beauty)",
-        "Myeongdong night vibe"
-      ]
+      "tagline": "Untuk yang suka spot viral + café aesthetic + shopping ringan",
+      "price": "₩149,000 / pax (all-inclusive)",
+      "finalPrice": "₩149,000 / pax",
+      "detailLabel": "Lihat detail program",
+      "highlights": [
+        "Hongdae creative street + content spot terpilih",
+        "2 café aesthetic (1 signature drink per café)",
+        "Myeongdong shopping stop + night vibe",
+        "Tim bantu pilih rute paling efisien (minim waktu terbuang)"
+      ],
+      "itinerary": [
+        {
+          "time": "09:30",
+          "title": "Meet-up & route briefing",
+          "desc": "Penjelasan rundown harian, checklist kebutuhan foto, dan opsi cuaca cadangan."
+        },
+        {
+          "time": "10:30",
+          "title": "Hongdae trend walk",
+          "desc": "Street area viral, rekomendasi angle foto, dan stop fashion/k-beauty quick pick."
+        },
+        {
+          "time": "12:30",
+          "title": "Lunch set",
+          "desc": "Set menu Korea populer dengan opsi non-spicy saat dibutuhkan."
+        },
+        {
+          "time": "14:00",
+          "title": "Café hopping session",
+          "desc": "2 café terkurasi, masing-masing termasuk 1 minuman signature."
+        },
+        {
+          "time": "17:30",
+          "title": "Myeongdong night vibe",
+          "desc": "Street atmosphere, snack stop, dan waktu bebas belanja."
+        }
+      ],
+      "inclusions": [
+        "Trip coordinator (ID-friendly support)",
+        "Rundown + route optimization",
+        "Transport in-city (subway/bus + short taxi hops)",
+        "1x lunch set",
+        "2x café signature drinks",
+        "1x street snack budget",
+        "Photo mission recommendations + konten checklist"
+      ],
+      "costBreakdown": [
+        {
+          "item": "Operasional trip coordinator",
+          "cost": "₩45,000"
+        },
+        {
+          "item": "Transport in-city (rata-rata)",
+          "cost": "₩18,000"
+        },
+        {
+          "item": "2 café signature drinks",
+          "cost": "₩22,000"
+        },
+        {
+          "item": "Lunch set",
+          "cost": "₩16,000"
+        },
+        {
+          "item": "Street snack budget",
+          "cost": "₩8,000"
+        },
+        {
+          "item": "Konten route planning + buffer",
+          "cost": "₩40,000"
+        }
+      ],
+      "notes": "Harga all-inclusive per orang untuk rute Seoul. Biaya personal shopping tidak termasuk."
     },
     {
-      "title": "K-Culture Explorer",
-      "price": "₩149,000 / pax",
-      "bullets": [
-        "Bukchon + route hanbok photo",
-        "Gyeongbokgung surroundings",
-        "K-food stop (halal-friendly option)",
-        "N Seoul Tower sunset point"
-      ]
+      "title": "K-Culture Explorer (Hanbok Included)",
+      "tagline": "Paket budaya Korea dengan hanbok experience + sunset city point",
+      "price": "₩169,000 / pax (all-inclusive)",
+      "finalPrice": "₩169,000 / pax",
+      "detailLabel": "Lihat detail program",
+      "highlights": [
+        "Hanbok rental + simple hair styling",
+        "Bukchon + Gyeongbokgung culture route",
+        "Halal-friendly lunch option",
+        "N Seoul Tower sunset session"
+      ],
+      "itinerary": [
+        {
+          "time": "09:00",
+          "title": "Hanbok fitting session",
+          "desc": "Pilih hanbok, aksesori basic, dan quick styling untuk sesi foto budaya."
+        },
+        {
+          "time": "10:30",
+          "title": "Bukchon + palace route",
+          "desc": "Walking route heritage dengan titik foto recommended."
+        },
+        {
+          "time": "12:30",
+          "title": "Lunch stop",
+          "desc": "Makan siang dengan opsi halal-friendly / non-pork menu."
+        },
+        {
+          "time": "15:00",
+          "title": "Culture cafe break",
+          "desc": "Istirahat ringan dan pindah ke area Namsan."
+        },
+        {
+          "time": "17:00",
+          "title": "N Seoul Tower sunset",
+          "desc": "Observatory visit + city view golden hour."
+        }
+      ],
+      "inclusions": [
+        "Hanbok rental premium (estimasi 3–4 jam)",
+        "Simple hair styling + basic accessories",
+        "Trip coordinator + cultural route support",
+        "Transport in-city",
+        "1x lunch set",
+        "1x café break budget",
+        "N Seoul Tower observatory ticket",
+        "Foto spot guidance"
+      ],
+      "costBreakdown": [
+        {
+          "item": "Hanbok rental + styling (rata-rata)",
+          "cost": "₩35,000"
+        },
+        {
+          "item": "Cultural route support",
+          "cost": "₩18,000"
+        },
+        {
+          "item": "Lunch halal-friendly budget",
+          "cost": "₩18,000"
+        },
+        {
+          "item": "N Seoul Tower observatory",
+          "cost": "₩24,000"
+        },
+        {
+          "item": "Transport in-city (rata-rata)",
+          "cost": "₩20,000"
+        },
+        {
+          "item": "Operasional + buffer",
+          "cost": "₩54,000"
+        }
+      ],
+      "notes": "Dengan hanbok, beberapa area palace bisa free-entry sesuai kebijakan setempat saat kunjungan."
     },
     {
       "title": "Nature + City Balance",
-      "price": "₩159,000 / pax",
-      "bullets": [
-        "Seoul Forest / Hangang route",
-        "Picnic content-friendly timing",
-        "Ikseondong hidden alley",
-        "Skyline ending spot"
-      ]
+      "tagline": "Santai, estetik, dan seimbang antara taman kota + hidden alleys",
+      "price": "₩179,000 / pax (all-inclusive)",
+      "finalPrice": "₩179,000 / pax",
+      "detailLabel": "Lihat detail program",
+      "highlights": [
+        "Seoul Forest / Hangang route untuk vibe santai",
+        "Picnic-style experience (content-friendly)",
+        "Ikseondong hidden alley exploration",
+        "Skyline ending spot untuk foto malam"
+      ],
+      "itinerary": [
+        {
+          "time": "10:00",
+          "title": "Start di Seoul Forest",
+          "desc": "Morning walk, spot foto natural light, dan mini briefing konten."
+        },
+        {
+          "time": "12:00",
+          "title": "Brunch set",
+          "desc": "Brunch + minuman dengan budget menu yang sudah disiapkan."
+        },
+        {
+          "time": "14:00",
+          "title": "Hangang picnic concept",
+          "desc": "Picnic mat + snack set basic untuk experience santai."
+        },
+        {
+          "time": "16:30",
+          "title": "Ikseondong alley route",
+          "desc": "Jalur hidden gems untuk foto arsitektur + café stop."
+        },
+        {
+          "time": "19:00",
+          "title": "Skyline ending",
+          "desc": "Penutupan di spot malam dengan view kota terbaik hari itu."
+        }
+      ],
+      "inclusions": [
+        "Trip coordinator + route curation",
+        "Transport in-city",
+        "Brunch + dessert budget",
+        "Picnic basic set (mat + snack kit)",
+        "1x café stop budget",
+        "Night skyline photo route assistance"
+      ],
+      "costBreakdown": [
+        {
+          "item": "Route curation + trip coordination",
+          "cost": "₩48,000"
+        },
+        {
+          "item": "Brunch + dessert budget",
+          "cost": "₩26,000"
+        },
+        {
+          "item": "Picnic set basic",
+          "cost": "₩24,000"
+        },
+        {
+          "item": "Café stop budget",
+          "cost": "₩12,000"
+        },
+        {
+          "item": "Transport in-city (rata-rata)",
+          "cost": "₩24,000"
+        },
+        {
+          "item": "Operasional + buffer",
+          "cost": "₩45,000"
+        }
+      ],
+      "notes": "Harga all-inclusive sudah mempertimbangkan average food/drink & mobility biaya harian Seoul."
     }
   ],
   "photos": [
@@ -76,11 +287,11 @@
     "ownerWa": "6280000000000",
     "waLabel": "+62-xxx-xxxx-xxxx",
     "instagram": "@yourbrand.korea",
-    "quickMessage": "Halo! Saya tertarik One Day Korea Trip. Bisa share paket dan tanggal available?"
+    "quickMessage": "Halo! Saya tertarik One Day Korea Trip all-inclusive. Bisa info tanggal available dan mekanisme booking?"
   },
   "booking": {
     "buttonText": "Kirim Permintaan via WhatsApp",
     "hint": "Klik tombol ini akan membuka WhatsApp dengan format booking otomatis."
   },
-  "footer": "One Day Korea Package · Live booking via WhatsApp · Target: Indonesian 20s travelers."
+  "footer": "One Day Korea Package · All-inclusive detail edition · Booking via WhatsApp"
 }
