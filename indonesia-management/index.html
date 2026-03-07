@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Redirecting…</title>
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+</head>
+<body>
+  <p>Redirecting…</p>
+  <script>
+    const hash = window.location.hash || "";
+    const isIdentityToken =
+      hash.includes("invite_token=") ||
+      hash.includes("confirmation_token=") ||
+      hash.includes("recovery_token=") ||
+      hash.includes("access_token=");
+
+    if (isIdentityToken) {
+      window.location.replace(`/admin/${hash}`);
+    } else {
+      window.location.replace("/one-day-korea-package-live.html");
+    }
+  </script>
+</body>
+</html>
