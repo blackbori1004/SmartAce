@@ -12,7 +12,7 @@
       "caption": "City lights & skyline vibe"
     },
     {
-      "image": "https://images.unsplash.com/photo-1517154421773-0529f29ea451?auto=format&fit=crop&w=1200&q=80",
+      "image": "assets/uploads/이미지-2026.-3.-7.-오전-6.22.png",
       "alt": "Korean cafe aesthetic",
       "caption": "Café hopping aesthetic"
     },
@@ -293,7 +293,21 @@
     "ctaPrimary": "Explore Package Details",
     "ctaSecondary": "View Gallery",
     "image": "assets/uploads/istockphoto-1257356821-612x612.jpg",
-    "imageAlt": "Korea aesthetic travel mood"
+    "imageAlt": "Korea aesthetic travel mood",
+    "images": [
+      {
+        "image": "assets/uploads/istockphoto-1257356821-612x612.jpg"
+      },
+      {
+        "image": "assets/uploads/한강-피크닉.jpeg"
+      },
+      {
+        "image": "assets/uploads/istockphoto-930690182-612x612.jpg"
+      },
+      {
+        "image": "assets/uploads/야장.jpeg"
+      }
+    ]
   },
   "footer": "One Day Korea Package · All-inclusive detail edition · Booking via WhatsApp"
 }
