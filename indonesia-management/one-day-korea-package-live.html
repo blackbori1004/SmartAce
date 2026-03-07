@@ -795,13 +795,45 @@ Untuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷</h1>
       bindHeroInteractions();
 
       let content = DEFAULT_CONTENT;
+      let enContent = null;
+
       try {
-        const res = await fetch("./data/site.id.json", { cache: "no-store" });
-        if (res.ok) {
-          content = await res.json();
+        const [idRes, enRes] = await Promise.all([
+          fetch("./data/site.id.json", { cache: "no-store" }),
+          fetch("./data/site.en.json", { cache: "no-store" })
+        ]);
+
+        if (idRes.ok) {
+          content = await idRes.json();
+        }
+
+        if (enRes.ok) {
+          enContent = await enRes.json();
         }
       } catch (err) {
         console.warn("Fallback to default content", err);
+      }
+
+      // Keep Indonesian copy/text, but sync hero images from EN so one edit updates both pages.
+      if (enContent?.hero) {
+        const enImages = Array.isArray(enContent.hero.images)
+          ? enContent.hero.images.filter((it) => it && it.image)
+          : [];
+
+        const hasEnSingleImage = !!enContent.hero.image;
+        if (enImages.length || hasEnSingleImage) {
+          const baseHero = content.hero || {};
+          content.hero = {
+            ...baseHero,
+            image: enContent.hero.image || baseHero.image,
+            imageAlt: enContent.hero.imageAlt || baseHero.imageAlt,
+            images: enImages.length
+              ? enImages
+              : (hasEnSingleImage
+                ? [{ image: enContent.hero.image, alt: enContent.hero.imageAlt || "Korea travel hero" }]
+                : baseHero.images)
+          };
+        }
       }
 
       const { ownerWa } = applyContent(content);

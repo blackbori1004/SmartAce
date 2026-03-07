@@ -40,7 +40,7 @@ collections:
                 required: true
                 min: 1
                 label_singular: "Hero Slide"
-                hint: "여러 장 업로드 가능. + Add Hero Slide 버튼으로 계속 추가하세요."
+                hint: "여러 장 업로드 가능. + Add Hero Slide 버튼으로 계속 추가하세요. (EN에서 수정한 Hero 이미지는 ID 페이지에도 자동 반영됩니다)"
                 summary: "{{fields.alt}}"
                 fields:
                   - { label: "Image", name: "image", widget: "image" }
