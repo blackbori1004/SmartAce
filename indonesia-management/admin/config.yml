@@ -15,7 +15,7 @@ collections:
         name: "one-day-korea-id"
         file: "indonesia-management/data/site.id.json"
         format: "json"
-        fields:
+        fields: &page_fields
           - label: "Meta"
             name: "meta"
             widget: "object"
@@ -122,3 +122,9 @@ collections:
               - { label: "Booking Hint", name: "hint", widget: "text" }
 
           - { label: "Footer", name: "footer", widget: "string" }
+
+      - label: "One Day Korea Page (EN)"
+        name: "one-day-korea-en"
+        file: "indonesia-management/data/site.en.json"
+        format: "json"
+        fields: *page_fields
