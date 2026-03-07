@@ -49,6 +49,7 @@
       font-size: clamp(30px, 5vw, 48px);
       line-height: 1.15;
       letter-spacing: -.02em;
+      white-space: pre-line;
     }
     .hero p { margin: 0; color: #d8e0ff; max-width: 780px; }
     .cta {
@@ -99,6 +100,30 @@
     .price { color: #ffe07c; font-weight: 800; margin: 6px 0; }
     ul { margin: 8px 0 0; padding-left: 18px; }
     li { margin: 4px 0; color: #d8e0ff; }
+
+    .gallery {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit,minmax(240px,1fr));
+    }
+    .photo {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .photo img {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      display: block;
+      background: #111;
+    }
+    .photo figcaption {
+      padding: 10px 12px;
+      color: #d8e0ff;
+      font-size: 14px;
+    }
 
     .two {
       display: grid;
@@ -151,62 +176,37 @@
 <body>
   <div class="container">
     <header class="hero">
-      <span class="pill">REAL-USE VERSION · WhatsApp Booking Enabled</span>
-      <h1>One Day Korea Trip<br/>Untuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷</h1>
-      <p>
+      <span class="pill" id="heroBadge">REAL-USE VERSION · WhatsApp Booking Enabled</span>
+      <h1 id="heroTitle">One Day Korea Trip
+Untuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷</h1>
+      <p id="heroSubtitle">
         Paket harian anti-ribet untuk kamu yang pengen Korea vibes maksimal dalam 1 hari: spot viral, café aesthetic,
         route efisien, dan jadwal yang cocok buat konten + healing + kuliner.
       </p>
       <div class="cta">
-        <a href="#booking" class="btn primary">Booking Sekarang</a>
-        <a href="#paket" class="btn ghost">Lihat Paket</a>
+        <a href="#booking" class="btn primary" id="ctaPrimary">Booking Sekarang</a>
+        <a href="#paket" class="btn ghost" id="ctaSecondary">Lihat Paket</a>
       </div>
       <div class="kpi">
-        <div><strong>10–12 jam</strong><span>Durasi trip</span></div>
-        <div><strong>2–6 pax</strong><span>Ideal group size</span></div>
-        <div><strong>Mulai ₩129,000</strong><span>Harga per orang</span></div>
-        <div><strong class="ok">Instant booking</strong><span>via WhatsApp</span></div>
+        <div><strong id="kpi1Value">10–12 jam</strong><span id="kpi1Label">Durasi trip</span></div>
+        <div><strong id="kpi2Value">2–6 pax</strong><span id="kpi2Label">Ideal group size</span></div>
+        <div><strong id="kpi3Value">Mulai ₩129,000</strong><span id="kpi3Label">Harga per orang</span></div>
+        <div><strong class="ok" id="kpi4Value">Instant booking</strong><span id="kpi4Label">via WhatsApp</span></div>
       </div>
     </header>
 
     <section id="paket">
-      <h2>Paket Pilihan</h2>
-      <div class="cards">
-        <article class="card">
-          <h3>Seoul Trend & Café Hopping</h3>
-          <p class="price">₩129,000 / pax</p>
-          <ul>
-            <li>Hongdae + area foto viral</li>
-            <li>2 café aesthetic (rekomendasi terkurasi)</li>
-            <li>Shopping stop (fashion/K-beauty)</li>
-            <li>Myeongdong night vibe</li>
-          </ul>
-        </article>
-        <article class="card">
-          <h3>K-Culture Explorer</h3>
-          <p class="price">₩149,000 / pax</p>
-          <ul>
-            <li>Bukchon + route hanbok photo</li>
-            <li>Gyeongbokgung surroundings</li>
-            <li>K-food stop (halal-friendly option)</li>
-            <li>N Seoul Tower sunset point</li>
-          </ul>
-        </article>
-        <article class="card">
-          <h3>Nature + City Balance</h3>
-          <p class="price">₩159,000 / pax</p>
-          <ul>
-            <li>Seoul Forest / Hangang route</li>
-            <li>Picnic content-friendly timing</li>
-            <li>Ikseondong hidden alley</li>
-            <li>Skyline ending spot</li>
-          </ul>
-        </article>
-      </div>
+      <h2 id="packageSectionTitle">Paket Pilihan</h2>
+      <div class="cards" id="packageCards"></div>
+    </section>
+
+    <section id="gallerySection">
+      <h2 id="galleryTitle">Preview Spot & Mood</h2>
+      <div class="gallery" id="photoGallery"></div>
     </section>
 
     <section id="booking">
-      <h2>Reservasi Langsung</h2>
+      <h2 id="bookingTitle">Reservasi Langsung</h2>
       <div class="two">
         <form class="form" id="bookingForm">
           <div class="field">
@@ -233,11 +233,8 @@
           </div>
           <div class="field">
             <label>Paket</label>
-            <select required name="package">
+            <select required name="package" id="packageSelect">
               <option value="">Pilih paket</option>
-              <option>Seoul Trend & Café Hopping (₩129,000)</option>
-              <option>K-Culture Explorer (₩149,000)</option>
-              <option>Nature + City Balance (₩159,000)</option>
             </select>
           </div>
           <div class="field">
@@ -245,9 +242,9 @@
             <textarea name="notes" placeholder="Misal: halal food, spot belanja tertentu, prefer foto aesthetic, dll"></textarea>
           </div>
 
-          <button class="btn primary" type="submit">Kirim Permintaan via WhatsApp</button>
-          <p class="hint">Klik tombol ini akan membuka WhatsApp dengan format booking otomatis.</p>
-          <p class="warning">Ganti nomor WA di script sebelum publish (lihat komentar: OWNER_WA).</p>
+          <button class="btn primary" type="submit" id="bookingBtn">Kirim Permintaan via WhatsApp</button>
+          <p class="hint" id="bookingHint">Klik tombol ini akan membuka WhatsApp dengan format booking otomatis.</p>
+          <p class="warning">Nomor WA owner & konten bisa diedit dari panel admin: <strong>/admin</strong>.</p>
         </form>
 
         <aside class="side">
@@ -264,13 +261,13 @@
             <li>Tiket masuk atraksi berbayar</li>
             <li>Pengeluaran pribadi</li>
           </ul>
-          <h3>Fast contact</h3>
-          <p class="hint">WA: +62-xxx-xxxx-xxxx<br/>IG: @yourbrand.korea</p>
+          <h3 id="contactTitle">Fast contact</h3>
+          <p class="hint" id="fastContact">WA: +62-xxx-xxxx-xxxx<br/>IG: @yourbrand.korea</p>
         </aside>
       </div>
     </section>
 
-    <footer>
+    <footer id="footerText">
       One Day Korea Package · Live booking via WhatsApp · Target: Indonesian 20s travelers.
     </footer>
   </div>
@@ -278,12 +275,196 @@
   <a class="sticky" id="waQuick" href="#booking">💬 Booking via WhatsApp</a>
 
   <script>
-    // IMPORTANT: replace with your real WhatsApp number in international format, no '+'
-    // Example: 6281234567890
-    const OWNER_WA = "6280000000000";
+    const DEFAULT_CONTENT = {
+      meta: {
+        title: "One Day Korea Trip — Booking Langsung via WhatsApp",
+        description: "Paket one-day Korea untuk traveler Indonesia usia 20-an. Bisa booking langsung via WhatsApp dalam 1 klik.",
+        ogTitle: "One Day Korea Trip — Booking Langsung",
+        ogDescription: "Paket one-day Korea untuk traveler Indonesia usia 20-an."
+      },
+      hero: {
+        badge: "REAL-USE VERSION · WhatsApp Booking Enabled",
+        title: "One Day Korea Trip\nUntuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷",
+        subtitle: "Paket harian anti-ribet untuk kamu yang pengen Korea vibes maksimal dalam 1 hari: spot viral, café aesthetic, route efisien, dan jadwal yang cocok buat konten + healing + kuliner.",
+        ctaPrimary: "Booking Sekarang",
+        ctaSecondary: "Lihat Paket"
+      },
+      kpis: [
+        { value: "10–12 jam", label: "Durasi trip" },
+        { value: "2–6 pax", label: "Ideal group size" },
+        { value: "Mulai ₩129,000", label: "Harga per orang" },
+        { value: "Instant booking", label: "via WhatsApp" }
+      ],
+      sections: {
+        packagesTitle: "Paket Pilihan",
+        galleryTitle: "Preview Spot & Mood",
+        bookingTitle: "Reservasi Langsung"
+      },
+      packages: [
+        {
+          title: "Seoul Trend & Café Hopping",
+          price: "₩129,000 / pax",
+          bullets: [
+            "Hongdae + area foto viral",
+            "2 café aesthetic (rekomendasi terkurasi)",
+            "Shopping stop (fashion/K-beauty)",
+            "Myeongdong night vibe"
+          ]
+        },
+        {
+          title: "K-Culture Explorer",
+          price: "₩149,000 / pax",
+          bullets: [
+            "Bukchon + route hanbok photo",
+            "Gyeongbokgung surroundings",
+            "K-food stop (halal-friendly option)",
+            "N Seoul Tower sunset point"
+          ]
+        },
+        {
+          title: "Nature + City Balance",
+          price: "₩159,000 / pax",
+          bullets: [
+            "Seoul Forest / Hangang route",
+            "Picnic content-friendly timing",
+            "Ikseondong hidden alley",
+            "Skyline ending spot"
+          ]
+        }
+      ],
+      photos: [
+        {
+          image: "https://images.unsplash.com/photo-1548115184-bc6544d06a58?auto=format&fit=crop&w=1200&q=80",
+          alt: "Seoul city view at night",
+          caption: "City lights & skyline vibe"
+        },
+        {
+          image: "https://images.unsplash.com/photo-1517154421773-0529f29ea451?auto=format&fit=crop&w=1200&q=80",
+          alt: "Korean cafe aesthetic",
+          caption: "Café hopping aesthetic"
+        },
+        {
+          image: "https://images.unsplash.com/photo-1538485399081-7c8978443f31?auto=format&fit=crop&w=1200&q=80",
+          alt: "Traditional Korean street",
+          caption: "Culture + modern mix"
+        }
+      ],
+      contact: {
+        ownerWa: "6280000000000",
+        waLabel: "+62-xxx-xxxx-xxxx",
+        instagram: "@yourbrand.korea",
+        quickMessage: "Halo! Saya tertarik One Day Korea Trip. Bisa share paket dan tanggal available?"
+      },
+      booking: {
+        buttonText: "Kirim Permintaan via WhatsApp",
+        hint: "Klik tombol ini akan membuka WhatsApp dengan format booking otomatis."
+      },
+      footer: "One Day Korea Package · Live booking via WhatsApp · Target: Indonesian 20s travelers."
+    };
 
     const form = document.getElementById("bookingForm");
     const quick = document.getElementById("waQuick");
+    const packageCards = document.getElementById("packageCards");
+    const packageSelect = document.getElementById("packageSelect");
+    const photoGallery = document.getElementById("photoGallery");
+
+    function escapeHtml(text = "") {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function setMeta(nameOrProp, value, attr = "name") {
+      const el = document.querySelector(`meta[${attr}="${nameOrProp}"]`);
+      if (el && value) el.setAttribute("content", value);
+    }
+
+    function sanitizeWa(input = "") {
+      return String(input).replace(/\D/g, "");
+    }
+
+    function renderPackages(packages = []) {
+      packageCards.innerHTML = "";
+      packageSelect.innerHTML = '<option value="">Pilih paket</option>';
+
+      packages.forEach((pkg) => {
+        const bullets = (pkg.bullets || []).map((b) => `<li>${escapeHtml(b)}</li>`).join("");
+        const card = document.createElement("article");
+        card.className = "card";
+        card.innerHTML = `
+          <h3>${escapeHtml(pkg.title || "")}</h3>
+          <p class="price">${escapeHtml(pkg.price || "")}</p>
+          <ul>${bullets}</ul>
+        `;
+        packageCards.appendChild(card);
+
+        const opt = document.createElement("option");
+        opt.value = `${pkg.title || ""} (${pkg.price || ""})`.trim();
+        opt.textContent = `${pkg.title || ""} (${pkg.price || ""})`.trim();
+        packageSelect.appendChild(opt);
+      });
+    }
+
+    function renderPhotos(photos = []) {
+      photoGallery.innerHTML = "";
+      if (!photos.length) {
+        document.getElementById("gallerySection").style.display = "none";
+        return;
+      }
+
+      photos.forEach((photo) => {
+        if (!photo.image) return;
+        const fig = document.createElement("figure");
+        fig.className = "photo";
+        fig.innerHTML = `
+          <img src="${escapeHtml(photo.image)}" alt="${escapeHtml(photo.alt || "Trip photo")}" loading="lazy" />
+          <figcaption>${escapeHtml(photo.caption || "")}</figcaption>
+        `;
+        photoGallery.appendChild(fig);
+      });
+    }
+
+    function applyContent(content) {
+      document.title = content.meta?.title || DEFAULT_CONTENT.meta.title;
+      setMeta("description", content.meta?.description || DEFAULT_CONTENT.meta.description);
+      setMeta("og:title", content.meta?.ogTitle || DEFAULT_CONTENT.meta.ogTitle, "property");
+      setMeta("og:description", content.meta?.ogDescription || DEFAULT_CONTENT.meta.ogDescription, "property");
+
+      document.getElementById("heroBadge").textContent = content.hero?.badge || DEFAULT_CONTENT.hero.badge;
+      document.getElementById("heroTitle").textContent = content.hero?.title || DEFAULT_CONTENT.hero.title;
+      document.getElementById("heroSubtitle").textContent = content.hero?.subtitle || DEFAULT_CONTENT.hero.subtitle;
+      document.getElementById("ctaPrimary").textContent = content.hero?.ctaPrimary || DEFAULT_CONTENT.hero.ctaPrimary;
+      document.getElementById("ctaSecondary").textContent = content.hero?.ctaSecondary || DEFAULT_CONTENT.hero.ctaSecondary;
+
+      const kpis = content.kpis?.length ? content.kpis : DEFAULT_CONTENT.kpis;
+      [1,2,3,4].forEach((n, idx) => {
+        document.getElementById(`kpi${n}Value`).textContent = kpis[idx]?.value || "";
+        document.getElementById(`kpi${n}Label`).textContent = kpis[idx]?.label || "";
+      });
+
+      document.getElementById("packageSectionTitle").textContent = content.sections?.packagesTitle || DEFAULT_CONTENT.sections.packagesTitle;
+      document.getElementById("galleryTitle").textContent = content.sections?.galleryTitle || DEFAULT_CONTENT.sections.galleryTitle;
+      document.getElementById("bookingTitle").textContent = content.sections?.bookingTitle || DEFAULT_CONTENT.sections.bookingTitle;
+
+      renderPackages(content.packages?.length ? content.packages : DEFAULT_CONTENT.packages);
+      renderPhotos(content.photos?.length ? content.photos : DEFAULT_CONTENT.photos);
+
+      const waLabel = content.contact?.waLabel || DEFAULT_CONTENT.contact.waLabel;
+      const ig = content.contact?.instagram || DEFAULT_CONTENT.contact.instagram;
+      document.getElementById("fastContact").innerHTML = `WA: ${escapeHtml(waLabel)}<br/>IG: ${escapeHtml(ig)}`;
+      document.getElementById("bookingBtn").textContent = content.booking?.buttonText || DEFAULT_CONTENT.booking.buttonText;
+      document.getElementById("bookingHint").textContent = content.booking?.hint || DEFAULT_CONTENT.booking.hint;
+      document.getElementById("footerText").textContent = content.footer || DEFAULT_CONTENT.footer;
+
+      const ownerWa = sanitizeWa(content.contact?.ownerWa || DEFAULT_CONTENT.contact.ownerWa);
+      const generic = content.contact?.quickMessage || DEFAULT_CONTENT.contact.quickMessage;
+      quick.href = `https://wa.me/${ownerWa}?text=${encodeURIComponent(generic)}`;
+
+      return { ownerWa };
+    }
 
     function buildMessage(data) {
       return [
@@ -300,24 +481,36 @@
       ].join("\n");
     }
 
-    form.addEventListener("submit", function (e) {
-      e.preventDefault();
-      const fd = new FormData(form);
-      const data = Object.fromEntries(fd.entries());
-      const msg = buildMessage(data);
-      const url = `https://wa.me/${OWNER_WA}?text=${encodeURIComponent(msg)}`;
-      window.open(url, "_blank");
-    });
+    async function boot() {
+      let content = DEFAULT_CONTENT;
+      try {
+        const res = await fetch("./data/site.json", { cache: "no-store" });
+        if (res.ok) {
+          content = await res.json();
+        }
+      } catch (err) {
+        console.warn("Fallback to default content", err);
+      }
 
-    quick.addEventListener("click", function (e) {
-      if (quick.getAttribute("href") === "#booking") return;
-      e.preventDefault();
-      window.open(quick.href, "_blank");
-    });
+      const { ownerWa } = applyContent(content);
 
-    // quick generic CTA even before form fill
-    const generic = "Halo! Saya tertarik One Day Korea Trip. Bisa share paket dan tanggal available?";
-    quick.href = `https://wa.me/${OWNER_WA}?text=${encodeURIComponent(generic)}`;
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        const fd = new FormData(form);
+        const data = Object.fromEntries(fd.entries());
+        const msg = buildMessage(data);
+        const url = `https://wa.me/${ownerWa}?text=${encodeURIComponent(msg)}`;
+        window.open(url, "_blank");
+      });
+
+      quick.addEventListener("click", function (e) {
+        if (quick.getAttribute("href") === "#booking") return;
+        e.preventDefault();
+        window.open(quick.href, "_blank");
+      });
+    }
+
+    boot();
   </script>
 </body>
 </html>

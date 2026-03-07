@@ -1,0 +1,90 @@
+backend:
+  name: git-gateway
+  branch: main
+
+local_backend: true
+
+media_folder: "indonesia-management/assets/uploads"
+public_folder: "./assets/uploads"
+
+collections:
+  - name: "site"
+    label: "Site Content"
+    files:
+      - label: "One Day Korea Page"
+        name: "one-day-korea"
+        file: "indonesia-management/data/site.json"
+        format: "json"
+        fields:
+          - label: "Meta"
+            name: "meta"
+            widget: "object"
+            fields:
+              - { label: "Title", name: "title", widget: "string" }
+              - { label: "Description", name: "description", widget: "text" }
+              - { label: "OG Title", name: "ogTitle", widget: "string" }
+              - { label: "OG Description", name: "ogDescription", widget: "text" }
+
+          - label: "Hero"
+            name: "hero"
+            widget: "object"
+            fields:
+              - { label: "Badge", name: "badge", widget: "string" }
+              - { label: "Main Title", name: "title", widget: "text", hint: "Gunakan baris baru untuk line break" }
+              - { label: "Subtitle", name: "subtitle", widget: "text" }
+              - { label: "CTA Primary", name: "ctaPrimary", widget: "string" }
+              - { label: "CTA Secondary", name: "ctaSecondary", widget: "string" }
+
+          - label: "KPIs"
+            name: "kpis"
+            widget: "list"
+            min: 4
+            max: 4
+            fields:
+              - { label: "Value", name: "value", widget: "string" }
+              - { label: "Label", name: "label", widget: "string" }
+
+          - label: "Section Titles"
+            name: "sections"
+            widget: "object"
+            fields:
+              - { label: "Packages Title", name: "packagesTitle", widget: "string" }
+              - { label: "Gallery Title", name: "galleryTitle", widget: "string" }
+              - { label: "Booking Title", name: "bookingTitle", widget: "string" }
+
+          - label: "Packages"
+            name: "packages"
+            widget: "list"
+            fields:
+              - { label: "Package Name", name: "title", widget: "string" }
+              - { label: "Price", name: "price", widget: "string" }
+              - label: "Bullets"
+                name: "bullets"
+                widget: "list"
+                field: { label: "Point", name: "point", widget: "string" }
+
+          - label: "Photos"
+            name: "photos"
+            widget: "list"
+            fields:
+              - { label: "Image", name: "image", widget: "image" }
+              - { label: "Alt Text", name: "alt", widget: "string", required: false }
+              - { label: "Caption", name: "caption", widget: "string", required: false }
+
+          - label: "Contact"
+            name: "contact"
+            widget: "object"
+            fields:
+              - { label: "Owner WhatsApp Number", name: "ownerWa", widget: "string", hint: "Format angka saja, contoh: 6281234567890" }
+              - { label: "Display WA Label", name: "waLabel", widget: "string" }
+              - { label: "Instagram", name: "instagram", widget: "string" }
+              - { label: "Quick WhatsApp Message", name: "quickMessage", widget: "text" }
+
+          - label: "Booking"
+            name: "booking"
+            widget: "object"
+            fields:
+              - { label: "Booking Button Text", name: "buttonText", widget: "string" }
+              - { label: "Booking Hint", name: "hint", widget: "text" }
+
+          - { label: "Footer", name: "footer", widget: "string" }

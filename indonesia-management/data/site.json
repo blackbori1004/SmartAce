@@ -1,0 +1,86 @@
+{
+  "meta": {
+    "title": "One Day Korea Trip — Booking Langsung via WhatsApp",
+    "description": "Paket one-day Korea untuk traveler Indonesia usia 20-an. Bisa booking langsung via WhatsApp dalam 1 klik.",
+    "ogTitle": "One Day Korea Trip — Booking Langsung",
+    "ogDescription": "Paket one-day Korea untuk traveler Indonesia usia 20-an."
+  },
+  "hero": {
+    "badge": "REAL-USE VERSION · WhatsApp Booking Enabled",
+    "title": "One Day Korea Trip\nUntuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷",
+    "subtitle": "Paket harian anti-ribet untuk kamu yang pengen Korea vibes maksimal dalam 1 hari: spot viral, café aesthetic, route efisien, dan jadwal yang cocok buat konten + healing + kuliner.",
+    "ctaPrimary": "Booking Sekarang",
+    "ctaSecondary": "Lihat Paket"
+  },
+  "kpis": [
+    { "value": "10–12 jam", "label": "Durasi trip" },
+    { "value": "2–6 pax", "label": "Ideal group size" },
+    { "value": "Mulai ₩129,000", "label": "Harga per orang" },
+    { "value": "Instant booking", "label": "via WhatsApp" }
+  ],
+  "sections": {
+    "packagesTitle": "Paket Pilihan",
+    "galleryTitle": "Preview Spot & Mood",
+    "bookingTitle": "Reservasi Langsung"
+  },
+  "packages": [
+    {
+      "title": "Seoul Trend & Café Hopping",
+      "price": "₩129,000 / pax",
+      "bullets": [
+        "Hongdae + area foto viral",
+        "2 café aesthetic (rekomendasi terkurasi)",
+        "Shopping stop (fashion/K-beauty)",
+        "Myeongdong night vibe"
+      ]
+    },
+    {
+      "title": "K-Culture Explorer",
+      "price": "₩149,000 / pax",
+      "bullets": [
+        "Bukchon + route hanbok photo",
+        "Gyeongbokgung surroundings",
+        "K-food stop (halal-friendly option)",
+        "N Seoul Tower sunset point"
+      ]
+    },
+    {
+      "title": "Nature + City Balance",
+      "price": "₩159,000 / pax",
+      "bullets": [
+        "Seoul Forest / Hangang route",
+        "Picnic content-friendly timing",
+        "Ikseondong hidden alley",
+        "Skyline ending spot"
+      ]
+    }
+  ],
+  "photos": [
+    {
+      "image": "https://images.unsplash.com/photo-1548115184-bc6544d06a58?auto=format&fit=crop&w=1200&q=80",
+      "alt": "Seoul city view at night",
+      "caption": "City lights & skyline vibe"
+    },
+    {
+      "image": "https://images.unsplash.com/photo-1517154421773-0529f29ea451?auto=format&fit=crop&w=1200&q=80",
+      "alt": "Korean cafe aesthetic",
+      "caption": "Café hopping aesthetic"
+    },
+    {
+      "image": "https://images.unsplash.com/photo-1538485399081-7c8978443f31?auto=format&fit=crop&w=1200&q=80",
+      "alt": "Traditional Korean street",
+      "caption": "Culture + modern mix"
+    }
+  ],
+  "contact": {
+    "ownerWa": "6280000000000",
+    "waLabel": "+62-xxx-xxxx-xxxx",
+    "instagram": "@yourbrand.korea",
+    "quickMessage": "Halo! Saya tertarik One Day Korea Trip. Bisa share paket dan tanggal available?"
+  },
+  "booking": {
+    "buttonText": "Kirim Permintaan via WhatsApp",
+    "hint": "Klik tombol ini akan membuka WhatsApp dengan format booking otomatis."
+  },
+  "footer": "One Day Korea Package · Live booking via WhatsApp · Target: Indonesian 20s travelers."
+}
