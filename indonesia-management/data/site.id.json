@@ -10,7 +10,9 @@
     "title": "One Day Korea Trip\nDetail Program + Budget Jelas 🇮🇩✨🇰🇷",
     "subtitle": "Setiap paket bisa diklik untuk lihat rundown jam-per-jam, fasilitas, dan komponen biaya. Cocok untuk traveler yang ingin tahu value sebelum booking.",
     "ctaPrimary": "Cek Paket Detail",
-    "ctaSecondary": "Lihat Gallery"
+    "ctaSecondary": "Lihat Gallery",
+    "image": "https://images.unsplash.com/photo-1517154421773-0529f29ea451?auto=format&fit=crop&w=1600&q=80",
+    "imageAlt": "Korea aesthetic travel mood"
   },
   "kpis": [
     {

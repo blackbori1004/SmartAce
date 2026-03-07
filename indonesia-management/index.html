@@ -19,7 +19,10 @@
     if (isIdentityToken) {
       window.location.replace(`/admin/${hash}`);
     } else {
-      window.location.replace("/one-day-korea-package-live.html");
+      const langs = (navigator.languages || [navigator.language || "id"]).map((l) => String(l).toLowerCase());
+      const prefersEnglish = langs.some((l) => l.startsWith("en"));
+      const target = prefersEnglish ? "/one-day-korea-package-en.html" : "/one-day-korea-package-live.html";
+      window.location.replace(target);
     }
   </script>
 </body>

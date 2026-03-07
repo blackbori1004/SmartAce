@@ -72,6 +72,19 @@
       white-space: pre-line;
     }
     .hero p { margin: 0; color: #d8e0ff; max-width: 780px; }
+    .hero-media {
+      margin-top: 16px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.18);
+    }
+    .hero-media img {
+      width: 100%;
+      max-height: 360px;
+      object-fit: cover;
+      display: block;
+    }
     .cta {
       margin-top: 16px;
       display: flex;
@@ -273,6 +286,9 @@ Untuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷</h1>
         Paket harian anti-ribet untuk kamu yang pengen Korea vibes maksimal dalam 1 hari: spot viral, café aesthetic,
         route efisien, dan jadwal yang cocok buat konten + healing + kuliner.
       </p>
+      <figure class="hero-media" id="heroImageWrap">
+        <img id="heroImg" src="https://images.unsplash.com/photo-1538485399081-7c8978443f31?auto=format&fit=crop&w=1600&q=80" alt="Korea travel hero" loading="eager" />
+      </figure>
       <div class="cta">
         <a href="#booking" class="btn primary" id="ctaPrimary">Booking Sekarang</a>
         <a href="#paket" class="btn ghost" id="ctaSecondary">Lihat Paket</a>
@@ -378,7 +394,9 @@ Untuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷</h1>
         title: "One Day Korea Trip\nUntuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷",
         subtitle: "Paket harian anti-ribet untuk kamu yang pengen Korea vibes maksimal dalam 1 hari: spot viral, café aesthetic, route efisien, dan jadwal yang cocok buat konten + healing + kuliner.",
         ctaPrimary: "Booking Sekarang",
-        ctaSecondary: "Lihat Paket"
+        ctaSecondary: "Lihat Paket",
+        image: "https://images.unsplash.com/photo-1538485399081-7c8978443f31?auto=format&fit=crop&w=1600&q=80",
+        imageAlt: "Korea travel hero"
       },
       kpis: [
         { value: "10–12 jam", label: "Durasi trip" },
@@ -570,6 +588,18 @@ Untuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷</h1>
       document.getElementById("heroSubtitle").textContent = content.hero?.subtitle || DEFAULT_CONTENT.hero.subtitle;
       document.getElementById("ctaPrimary").textContent = content.hero?.ctaPrimary || DEFAULT_CONTENT.hero.ctaPrimary;
       document.getElementById("ctaSecondary").textContent = content.hero?.ctaSecondary || DEFAULT_CONTENT.hero.ctaSecondary;
+
+      const heroImage = content.hero?.image || DEFAULT_CONTENT.hero.image;
+      const heroImageAlt = content.hero?.imageAlt || DEFAULT_CONTENT.hero.imageAlt || "Korea travel hero";
+      const heroImgEl = document.getElementById("heroImg");
+      const heroWrapEl = document.getElementById("heroImageWrap");
+      if (heroImage) {
+        heroImgEl.src = heroImage;
+        heroImgEl.alt = heroImageAlt;
+        heroWrapEl.style.display = "block";
+      } else {
+        heroWrapEl.style.display = "none";
+      }
 
       const kpis = content.kpis?.length ? content.kpis : DEFAULT_CONTENT.kpis;
       [1,2,3,4].forEach((n, idx) => {

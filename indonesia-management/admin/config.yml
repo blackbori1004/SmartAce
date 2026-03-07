@@ -34,6 +34,8 @@ collections:
               - { label: "Subtitle", name: "subtitle", widget: "text" }
               - { label: "CTA Primary", name: "ctaPrimary", widget: "string" }
               - { label: "CTA Secondary", name: "ctaSecondary", widget: "string" }
+              - { label: "Hero Image", name: "image", widget: "image", required: false }
+              - { label: "Hero Image Alt", name: "imageAlt", widget: "string", required: false }
 
           - label: "KPIs"
             name: "kpis"

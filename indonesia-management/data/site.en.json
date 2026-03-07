@@ -10,7 +10,9 @@
     "title": "One Day Korea Trip\nDetailed Program + Clear Budget 🇮🇩✨🇰🇷",
     "subtitle": "Tap each package card to see hour-by-hour itinerary, inclusions, and cost breakdown. Perfect for travelers who want clear value before booking.",
     "ctaPrimary": "Explore Package Details",
-    "ctaSecondary": "View Gallery"
+    "ctaSecondary": "View Gallery",
+    "image": "https://images.unsplash.com/photo-1517154421773-0529f29ea451?auto=format&fit=crop&w=1600&q=80",
+    "imageAlt": "Korea aesthetic travel mood"
   },
   "kpis": [
     { "value": "10–12 hours", "label": "Trip duration" },
