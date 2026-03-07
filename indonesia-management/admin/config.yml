@@ -34,8 +34,17 @@ collections:
               - { label: "Subtitle", name: "subtitle", widget: "text" }
               - { label: "CTA Primary", name: "ctaPrimary", widget: "string" }
               - { label: "CTA Secondary", name: "ctaSecondary", widget: "string" }
-              - { label: "Hero Image", name: "image", widget: "image", required: false }
-              - { label: "Hero Image Alt", name: "imageAlt", widget: "string", required: false }
+              - label: "Hero Images (Slider)"
+                name: "images"
+                widget: "list"
+                required: true
+                min: 1
+                label_singular: "Hero Slide"
+                hint: "여러 장 업로드 가능. + Add Hero Slide 버튼으로 계속 추가하세요."
+                summary: "{{fields.alt}}"
+                fields:
+                  - { label: "Image", name: "image", widget: "image" }
+                  - { label: "Alt", name: "alt", widget: "string", required: false }
 
           - label: "KPIs"
             name: "kpis"

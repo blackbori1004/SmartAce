@@ -78,13 +78,56 @@
       overflow: hidden;
       border: 1px solid rgba(255,255,255,.18);
       background: rgba(0,0,0,.18);
+      position: relative;
     }
-    .hero-media img {
+    .hero-track {
+      display: flex;
+      transition: transform .35s ease;
+      will-change: transform;
+    }
+    .hero-slide {
+      min-width: 100%;
+      margin: 0;
+    }
+    .hero-slide img {
       width: 100%;
-      max-height: 360px;
+      aspect-ratio: 21 / 8;
+      max-height: 430px;
       object-fit: cover;
       display: block;
+      background: #111;
     }
+    .hero-controls {
+      position: absolute;
+      inset: auto 12px 12px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+    }
+    .hero-arrow-wrap { display: flex; gap: 8px; pointer-events: auto; }
+    .hero-arrow {
+      border: 1px solid rgba(255,255,255,.35);
+      background: rgba(0,0,0,.35);
+      color: #fff;
+      border-radius: 999px;
+      width: 34px;
+      height: 34px;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .hero-dots { display: flex; gap: 6px; pointer-events: auto; }
+    .hero-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      border: 0;
+      background: rgba(255,255,255,.4);
+      cursor: pointer;
+      padding: 0;
+    }
+    .hero-dot.active { background: #fff; }
     .cta {
       margin-top: 16px;
       display: flex;
@@ -286,9 +329,16 @@ Untuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷</h1>
         Paket harian anti-ribet untuk kamu yang pengen Korea vibes maksimal dalam 1 hari: spot viral, café aesthetic,
         route efisien, dan jadwal yang cocok buat konten + healing + kuliner.
       </p>
-      <figure class="hero-media" id="heroImageWrap">
-        <img id="heroImg" src="https://images.unsplash.com/photo-1538485399081-7c8978443f31?auto=format&fit=crop&w=1600&q=80" alt="Korea travel hero" loading="eager" />
-      </figure>
+      <div class="hero-media" id="heroImageWrap">
+        <div class="hero-track" id="heroTrack"></div>
+        <div class="hero-controls" id="heroControls">
+          <div class="hero-arrow-wrap">
+            <button type="button" class="hero-arrow" id="heroPrev" aria-label="Previous image">‹</button>
+            <button type="button" class="hero-arrow" id="heroNext" aria-label="Next image">›</button>
+          </div>
+          <div class="hero-dots" id="heroDots" aria-label="Hero slider pagination"></div>
+        </div>
+      </div>
       <div class="cta">
         <a href="#booking" class="btn primary" id="ctaPrimary">Booking Sekarang</a>
         <a href="#paket" class="btn ghost" id="ctaSecondary">Lihat Paket</a>
@@ -396,7 +446,12 @@ Untuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷</h1>
         ctaPrimary: "Booking Sekarang",
         ctaSecondary: "Lihat Paket",
         image: "https://images.unsplash.com/photo-1538485399081-7c8978443f31?auto=format&fit=crop&w=1600&q=80",
-        imageAlt: "Korea travel hero"
+        imageAlt: "Korea travel hero",
+        images: [
+          { image: "https://images.unsplash.com/photo-1538485399081-7c8978443f31?auto=format&fit=crop&w=1600&q=80", alt: "Korea travel hero 1" },
+          { image: "https://images.unsplash.com/photo-1517154421773-0529f29ea451?auto=format&fit=crop&w=1600&q=80", alt: "Korea travel hero 2" },
+          { image: "https://images.unsplash.com/photo-1548115184-bc6544d06a58?auto=format&fit=crop&w=1600&q=80", alt: "Korea travel hero 3" }
+        ]
       },
       kpis: [
         { value: "10–12 jam", label: "Durasi trip" },
@@ -477,6 +532,17 @@ Untuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷</h1>
     const packageCards = document.getElementById("packageCards");
     const packageSelect = document.getElementById("packageSelect");
     const photoGallery = document.getElementById("photoGallery");
+    const heroWrapEl = document.getElementById("heroImageWrap");
+    const heroTrackEl = document.getElementById("heroTrack");
+    const heroDotsEl = document.getElementById("heroDots");
+    const heroControlsEl = document.getElementById("heroControls");
+    const heroPrevEl = document.getElementById("heroPrev");
+    const heroNextEl = document.getElementById("heroNext");
+
+    let heroSlides = [];
+    let heroIndex = 0;
+    let touchStartX = null;
+    let suppressTrackClick = false;
 
     function escapeHtml(text = "") {
       return String(text)
@@ -494,6 +560,97 @@ Untuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷</h1>
 
     function sanitizeWa(input = "") {
       return String(input).replace(/\D/g, "");
+    }
+
+    function updateHeroSlider() {
+      if (!heroSlides.length) return;
+      heroTrackEl.style.transform = `translateX(-${heroIndex * 100}%)`;
+      [...heroDotsEl.children].forEach((dot, i) => {
+        dot.classList.toggle("active", i === heroIndex);
+      });
+    }
+
+    function goHero(index) {
+      if (!heroSlides.length) return;
+      const len = heroSlides.length;
+      heroIndex = (index + len) % len;
+      updateHeroSlider();
+    }
+
+    function renderHeroMedia(hero = {}) {
+      const items = Array.isArray(hero.images) && hero.images.length
+        ? hero.images
+        : (hero.image ? [{ image: hero.image, alt: hero.imageAlt || "Korea travel hero" }] : []);
+
+      heroSlides = items.filter((it) => it && it.image);
+      heroIndex = 0;
+      heroTrackEl.innerHTML = "";
+      heroDotsEl.innerHTML = "";
+
+      if (!heroSlides.length) {
+        heroWrapEl.style.display = "none";
+        return;
+      }
+
+      heroWrapEl.style.display = "block";
+      heroSlides.forEach((item, idx) => {
+        const figure = document.createElement("figure");
+        figure.className = "hero-slide";
+        const img = document.createElement("img");
+        img.src = item.image;
+        img.alt = item.alt || `Hero image ${idx + 1}`;
+        img.loading = idx === 0 ? "eager" : "lazy";
+        figure.appendChild(img);
+        heroTrackEl.appendChild(figure);
+
+        const dot = document.createElement("button");
+        dot.type = "button";
+        dot.className = "hero-dot";
+        dot.setAttribute("aria-label", `Go to image ${idx + 1}`);
+        dot.addEventListener("click", () => goHero(idx));
+        heroDotsEl.appendChild(dot);
+      });
+
+      const hasMultiple = heroSlides.length > 1;
+      heroControlsEl.style.display = hasMultiple ? "flex" : "none";
+      heroTrackEl.style.cursor = hasMultiple ? "pointer" : "default";
+      updateHeroSlider();
+    }
+
+    function bindHeroInteractions() {
+      heroPrevEl.addEventListener("click", () => goHero(heroIndex - 1));
+      heroNextEl.addEventListener("click", () => goHero(heroIndex + 1));
+
+      heroTrackEl.addEventListener("click", () => {
+        if (heroSlides.length < 2) return;
+        if (suppressTrackClick) {
+          suppressTrackClick = false;
+          return;
+        }
+        goHero(heroIndex + 1);
+      });
+
+      heroTrackEl.addEventListener("touchstart", (e) => {
+        touchStartX = e.changedTouches?.[0]?.clientX ?? null;
+      }, { passive: true });
+
+      heroTrackEl.addEventListener("touchend", (e) => {
+        const endX = e.changedTouches?.[0]?.clientX ?? null;
+        if (touchStartX == null || endX == null) return;
+        const diff = touchStartX - endX;
+        if (Math.abs(diff) > 40) {
+          suppressTrackClick = true;
+          goHero(diff > 0 ? heroIndex + 1 : heroIndex - 1);
+          setTimeout(() => {
+            suppressTrackClick = false;
+          }, 220);
+        }
+        touchStartX = null;
+      }, { passive: true });
+
+      heroTrackEl.addEventListener("touchcancel", () => {
+        touchStartX = null;
+      }, { passive: true });
     }
 
     function renderPackages(packages = []) {
@@ -589,17 +746,7 @@ Untuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷</h1>
       document.getElementById("ctaPrimary").textContent = content.hero?.ctaPrimary || DEFAULT_CONTENT.hero.ctaPrimary;
       document.getElementById("ctaSecondary").textContent = content.hero?.ctaSecondary || DEFAULT_CONTENT.hero.ctaSecondary;
 
-      const heroImage = content.hero?.image || DEFAULT_CONTENT.hero.image;
-      const heroImageAlt = content.hero?.imageAlt || DEFAULT_CONTENT.hero.imageAlt || "Korea travel hero";
-      const heroImgEl = document.getElementById("heroImg");
-      const heroWrapEl = document.getElementById("heroImageWrap");
-      if (heroImage) {
-        heroImgEl.src = heroImage;
-        heroImgEl.alt = heroImageAlt;
-        heroWrapEl.style.display = "block";
-      } else {
-        heroWrapEl.style.display = "none";
-      }
+      renderHeroMedia(content.hero || DEFAULT_CONTENT.hero);
 
       const kpis = content.kpis?.length ? content.kpis : DEFAULT_CONTENT.kpis;
       [1,2,3,4].forEach((n, idx) => {
@@ -645,6 +792,8 @@ Untuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷</h1>
     }
 
     async function boot() {
+      bindHeroInteractions();
+
       let content = DEFAULT_CONTENT;
       try {
         const res = await fetch("./data/site.id.json", { cache: "no-store" });
