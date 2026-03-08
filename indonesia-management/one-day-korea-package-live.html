@@ -518,7 +518,7 @@ Untuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷</h1>
         ownerWa: "6280000000000",
         waLabel: "+62-xxx-xxxx-xxxx",
         instagram: "@yourbrand.korea",
-        quickMessage: "Halo! Saya tertarik One Day Korea Trip. Bisa share paket dan tanggal available?"
+        quickMessage: "Halo admin 👋 Saya tertarik One Day Korea Trip. Boleh dibantu info ketersediaan dan cara booking? Saya akan kirim detail: tanggal yang diinginkan, jumlah peserta, program/paket pilihan, dan catatan kebutuhan khusus. Terima kasih 🙏"
       },
       booking: {
         buttonText: "Kirim Permintaan via WhatsApp",
@@ -778,16 +778,18 @@ Untuk Traveler Indonesia 20-an 🇮🇩✨🇰🇷</h1>
 
     function buildMessage(data) {
       return [
-        "Halo! Saya ingin booking One Day Korea Trip.",
+        "Halo admin 👋",
+        "Saya tertarik booking One Day Korea Trip.",
+        "Mohon bantu cek ketersediaan untuk detail berikut ya:",
         "",
-        `Nama: ${data.name}`,
-        `WA: ${data.wa}`,
-        `Tanggal: ${data.date}`,
-        `Peserta: ${data.pax}`,
-        `Paket: ${data.package}`,
-        `Catatan: ${data.notes || "-"}`,
+        `• Nama: ${data.name}`,
+        `• WhatsApp: ${data.wa}`,
+        `• Tanggal yang diinginkan: ${data.date}`,
+        `• Jumlah peserta: ${data.pax}`,
+        `• Program/Paket yang diminati: ${data.package}`,
+        `• Catatan kebutuhan khusus: ${data.notes || "-"}`,
         "",
-        "Mohon info ketersediaan dan langkah pembayaran 🙏"
+        "Jika tersedia, mohon info langkah booking dan pembayarannya. Terima kasih 🙏"
       ].join("\n");
     }
 
